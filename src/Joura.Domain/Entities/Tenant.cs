@@ -7,5 +7,6 @@ public sealed class Tenant : Entity
     public required string Name { get; set; }
     public string Key { get; set; } = string.Empty;
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
+    public ICollection<AppUser> Users { get; set; } = new List<AppUser>();
     public ICollection<Project> Projects { get; set; } = new List<Project>();
 }

@@ -40,7 +40,7 @@ The solution starts as a modular monolith. This keeps deployment, debugging, and
 
 ### Phase 2
 
-- Real authentication and role-based access
+- Cookie-based authentication with tenant-aware access
 - Issue editing flow
 - Notification delivery channel
 - Better filtering and saved searches

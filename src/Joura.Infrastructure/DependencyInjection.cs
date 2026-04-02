@@ -14,7 +14,9 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("PostgreSql")
             ?? "Host=localhost;Port=5432;Database=joura;Username=joura;Password=joura";
 
+        services.AddHttpContextAccessor();
         services.AddDbContext<JouraDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
         services.AddScoped<IWorkTrackingService, WorkTrackingService>();
         return services;
     }

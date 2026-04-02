@@ -23,7 +23,11 @@ public sealed class JouraDbContext(DbContextOptions<JouraDbContext> options) : D
         {
             entity.Property(x => x.Email).HasMaxLength(256);
             entity.Property(x => x.DisplayName).HasMaxLength(128);
-            entity.HasIndex(x => x.Email).IsUnique();
+            entity.HasIndex(x => new { x.TenantId, x.Email }).IsUnique();
+            entity.HasOne(x => x.Tenant)
+                .WithMany(x => x.Users)
+                .HasForeignKey(x => x.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Tenant>(entity =>
@@ -37,7 +41,7 @@ public sealed class JouraDbContext(DbContextOptions<JouraDbContext> options) : D
         {
             entity.Property(x => x.Name).HasMaxLength(120);
             entity.Property(x => x.Key).HasMaxLength(12);
-            entity.HasIndex(x => x.Key).IsUnique();
+            entity.HasIndex(x => new { x.TenantId, x.Key }).IsUnique();
         });
 
         modelBuilder.Entity<IssueStatus>(entity =>
@@ -64,7 +68,7 @@ public sealed class JouraDbContext(DbContextOptions<JouraDbContext> options) : D
             entity.Property(x => x.Title).HasMaxLength(240);
             entity.Property(x => x.Description).HasColumnType("text");
             entity.Property(x => x.RowVersion).IsRowVersion();
-            entity.HasIndex(x => x.Key).IsUnique();
+            entity.HasIndex(x => new { x.ProjectId, x.Key }).IsUnique();
             entity.HasOne(x => x.Assignee).WithMany().HasForeignKey(x => x.AssigneeId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Reporter).WithMany().HasForeignKey(x => x.ReporterId).OnDelete(DeleteBehavior.Restrict);
         });

@@ -10,24 +10,46 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
-        <div class="nav-group">Tenant</div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="nav-icon">01</span> Dashboard
-            </NavLink>
-        </div>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-group">Tenant</div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span class="nav-icon">01</span> Dashboard
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="issues">
-                <span class="nav-icon">02</span> Backlog
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="issues">
+                        <span class="nav-icon">02</span> Backlog
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="board">
-                <span class="nav-icon">03</span> Board
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="board">
+                        <span class="nav-icon">03</span> Board
+                    </NavLink>
+                </div>
+
+                <div class="nav-group">Signed in as</div>
+                <div class="nav-item px-3">
+                    <span class="nav-link">@context.User.Identity?.Name</span>
+                </div>
+                <div class="nav-item px-3">
+                    <form method="post" action="/auth/logout">
+                        <button type="submit" class="nav-link text-start w-100">Sign out</button>
+                    </form>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-group">Access</div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="login">
+                        <span class="nav-icon">01</span> Login
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
     </nav>
 </div>
 

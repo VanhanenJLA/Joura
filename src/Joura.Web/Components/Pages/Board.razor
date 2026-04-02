@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @inject IWorkTrackingService WorkTrackingService
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Board</PageTitle>
 
@@ -70,8 +71,8 @@ else
     private List<ProjectReferenceDto> projects = [];
     private List<KanbanColumnDto> columns = [];
     private List<StatusReferenceDto> statuses = [];
-    private List<UserReferenceDto> users = [];
     private Guid selectedProjectId;
+    private Guid? currentUserId;
     private Guid? draggingIssueId;
     private Guid? draggingFromStatusId;
     private Guid? dropTargetStatusId;
@@ -79,8 +80,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        currentUserId = await ResolveCurrentUserIdAsync();
         projects = (await WorkTrackingService.GetProjectsAsync()).ToList();
-        users = (await WorkTrackingService.GetUsersAsync()).ToList();
 
         if (projects.Count == 0)
         {
@@ -110,7 +111,7 @@ else
 
     private async Task MoveIssueAsync(Guid issueId, Guid statusId)
     {
-        if (users.Count == 0 || isMovingIssue)
+        if (!currentUserId.HasValue || isMovingIssue)
         {
             return;
         }
@@ -118,7 +119,7 @@ else
         try
         {
             isMovingIssue = true;
-            await WorkTrackingService.MoveIssueAsync(new MoveIssueCommand(issueId, statusId, users[0].Id));
+            await WorkTrackingService.MoveIssueAsync(new MoveIssueCommand(issueId, statusId, currentUserId.Value));
             await LoadBoardAsync();
         }
         finally
@@ -174,5 +175,12 @@ else
         }
 
         await MoveIssueAsync(issueId, statusId);
+    }
+
+    private async Task<Guid?> ResolveCurrentUserIdAsync()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userIdClaim = authenticationState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
     }
 }

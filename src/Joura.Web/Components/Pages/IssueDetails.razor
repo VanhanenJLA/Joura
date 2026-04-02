@@ -1,6 +1,7 @@
 @page "/issues/{IssueId:guid}"
 @rendermode InteractiveServer
 @inject IWorkTrackingService WorkTrackingService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Issue</PageTitle>
 
@@ -107,22 +108,22 @@ else
 
     private IssueDetailDto? issue;
     private readonly CommentForm commentForm = new();
-    private List<UserReferenceDto> users = [];
+    private Guid? currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
-        users = (await WorkTrackingService.GetUsersAsync()).ToList();
+        currentUserId = await ResolveCurrentUserIdAsync();
         await ReloadAsync();
     }
 
     private async Task AddCommentAsync()
     {
-        if (issue is null || users.Count == 0 || string.IsNullOrWhiteSpace(commentForm.Body))
+        if (issue is null || !currentUserId.HasValue || string.IsNullOrWhiteSpace(commentForm.Body))
         {
             return;
         }
 
-        await WorkTrackingService.AddCommentAsync(new AddCommentCommand(issue.Id, users[0].Id, commentForm.Body));
+        await WorkTrackingService.AddCommentAsync(new AddCommentCommand(issue.Id, currentUserId.Value, commentForm.Body));
         commentForm.Body = string.Empty;
         await ReloadAsync();
     }
@@ -135,5 +136,12 @@ else
     private sealed class CommentForm
     {
         public string Body { get; set; } = string.Empty;
+    }
+
+    private async Task<Guid?> ResolveCurrentUserIdAsync()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userIdClaim = authenticationState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
     }
 }

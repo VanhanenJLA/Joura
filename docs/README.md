@@ -44,4 +44,4 @@ docker-compose up -d
 dotnet ef database update --project src/Joura.Infrastructure --startup-project src/Joura.Web
 ```
 
-- Authentication, Entra ID integration, Blob attachments, App Insights, and Key Vault are planned next-stage concerns and are documented in [architecture.md](/Users/jouni/repos/VanhanenJLA/Joura/Joura/docs/architecture.md).
+- The app now includes cookie-based authentication and tenant-scoped data access; Entra ID integration, Blob attachments, App Insights, and Key Vault remain next-stage concerns and are documented in [architecture.md](/Users/jouni/repos/VanhanenJLA/Joura/Joura/docs/architecture.md).

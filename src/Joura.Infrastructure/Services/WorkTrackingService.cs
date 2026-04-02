@@ -7,11 +7,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Joura.Infrastructure.Services;
 
-public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackingService
+public sealed class WorkTrackingService(
+    JouraDbContext dbContext,
+    ICurrentUserContext currentUserContext) : IWorkTrackingService
 {
     public async Task<TenantOverviewDto> GetTenantOverviewAsync(CancellationToken cancellationToken = default)
     {
+        var tenantId = GetTenantIdOrThrow();
         var tenant = await dbContext.Tenants
+            .AsNoTracking()
+            .Where(x => x.Id == tenantId)
             .Include(x => x.Projects)
             .ThenInclude(x => x.Issues)
             .ThenInclude(x => x.Status)
@@ -49,8 +54,10 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
     public async Task<IReadOnlyList<ProjectReferenceDto>> GetProjectsAsync(CancellationToken cancellationToken = default)
     {
+        var tenantId = GetTenantIdOrThrow();
         return await dbContext.Projects
             .AsNoTracking()
+            .Where(x => x.TenantId == tenantId)
             .OrderBy(x => x.Name)
             .Select(x => new ProjectReferenceDto(x.Id, x.Key, x.Name))
             .ToListAsync(cancellationToken);
@@ -58,8 +65,10 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
     public async Task<IReadOnlyList<UserReferenceDto>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
+        var tenantId = GetTenantIdOrThrow();
         return await dbContext.Users
             .AsNoTracking()
+            .Where(x => x.TenantId == tenantId)
             .OrderBy(x => x.DisplayName)
             .Select(x => new UserReferenceDto(x.Id, x.DisplayName, x.Email))
             .ToListAsync(cancellationToken);
@@ -67,9 +76,10 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
     public async Task<IReadOnlyList<StatusReferenceDto>> GetStatusesAsync(Guid projectId, CancellationToken cancellationToken = default)
     {
+        var tenantId = GetTenantIdOrThrow();
         return await dbContext.IssueStatuses
             .AsNoTracking()
-            .Where(x => x.ProjectId == projectId)
+            .Where(x => x.ProjectId == projectId && x.Project.TenantId == tenantId)
             .OrderBy(x => x.SortOrder)
             .Select(x => new StatusReferenceDto(x.Id, x.Name, x.Category, x.SortOrder))
             .ToListAsync(cancellationToken);
@@ -114,8 +124,10 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
     public async Task<IReadOnlyList<KanbanColumnDto>> GetBoardAsync(Guid projectId, CancellationToken cancellationToken = default)
     {
+        var tenantId = GetTenantIdOrThrow();
         var statuses = await dbContext.IssueStatuses
-            .Where(x => x.ProjectId == projectId)
+            .AsNoTracking()
+            .Where(x => x.ProjectId == projectId && x.Project.TenantId == tenantId)
             .OrderBy(x => x.SortOrder)
             .ToListAsync(cancellationToken);
 
@@ -134,6 +146,7 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
     public async Task<IssueDetailDto?> GetIssueAsync(Guid issueId, CancellationToken cancellationToken = default)
     {
+        var tenantId = GetTenantIdOrThrow();
         var issue = await dbContext.Issues
             .AsNoTracking()
             .Include(x => x.Project)
@@ -146,7 +159,7 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
             .ThenInclude(x => x.Author)
             .Include(x => x.AuditEvents.OrderByDescending(audit => audit.CreatedUtc))
             .ThenInclude(x => x.Actor)
-            .FirstOrDefaultAsync(x => x.Id == issueId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == issueId && x.Project.TenantId == tenantId, cancellationToken);
 
         return issue is null
             ? null
@@ -169,12 +182,11 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
     public async Task<Guid> CreateProjectAsync(CreateProjectCommand command, CancellationToken cancellationToken = default)
     {
-        var tenant = await dbContext.Tenants.FirstOrDefaultAsync(cancellationToken)
-            ?? throw new InvalidOperationException("Tenant missing. Seed data first.");
+        var tenantId = GetTenantIdOrThrow();
 
         var project = new Project
         {
-            TenantId = tenant.Id,
+            TenantId = tenantId,
             Name = command.Name.Trim(),
             Key = command.Key.Trim().ToUpperInvariant(),
             Description = command.Description.Trim()
@@ -193,7 +205,11 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
     public async Task<Guid> CreateIssueAsync(CreateIssueCommand command, CancellationToken cancellationToken = default)
     {
+        var tenantId = GetTenantIdOrThrow();
+        var actorId = GetUserIdOrThrow();
+
         var project = await dbContext.Projects
+            .Where(x => x.TenantId == tenantId)
             .Include(x => x.Statuses)
             .Include(x => x.Issues)
             .FirstOrDefaultAsync(x => x.Id == command.ProjectId, cancellationToken)
@@ -202,13 +218,24 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
         var defaultStatus = project.Statuses.OrderBy(x => x.SortOrder).FirstOrDefault(x => x.IsDefault)
             ?? project.Statuses.OrderBy(x => x.SortOrder).First();
 
+        var assigneeId = command.AssigneeId;
+        if (assigneeId.HasValue)
+        {
+            var assigneeBelongsToTenant = await dbContext.Users
+                .AnyAsync(x => x.Id == assigneeId.Value && x.TenantId == tenantId, cancellationToken);
+            if (!assigneeBelongsToTenant)
+            {
+                assigneeId = null;
+            }
+        }
+
         var issueNumber = project.Issues.Count + 1;
         var issue = new Issue
         {
             ProjectId = project.Id,
             StatusId = defaultStatus.Id,
-            ReporterId = command.ReporterId,
-            AssigneeId = command.AssigneeId,
+            ReporterId = actorId,
+            AssigneeId = assigneeId,
             Key = $"{project.Key}-{issueNumber}",
             Title = command.Title.Trim(),
             Description = command.Description.Trim(),
@@ -226,17 +253,17 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
         dbContext.AuditEvents.Add(new AuditEvent
         {
             Issue = issue,
-            ActorId = command.ReporterId,
+            ActorId = actorId,
             EventType = "IssueCreated",
             Description = $"Created issue {issue.Key}."
         });
 
-        if (command.AssigneeId.HasValue)
+        if (assigneeId.HasValue)
         {
             dbContext.Notifications.Add(new Notification
             {
                 Issue = issue,
-                UserId = command.AssigneeId.Value,
+                UserId = assigneeId.Value,
                 Type = NotificationType.IssueAssigned,
                 Message = $"You were assigned to {issue.Key}."
             });
@@ -248,16 +275,31 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
     public async Task UpdateIssueAsync(UpdateIssueCommand command, CancellationToken cancellationToken = default)
     {
+        var tenantId = GetTenantIdOrThrow();
+        var actorId = GetUserIdOrThrow();
+
         var issue = await dbContext.Issues
+            .Where(x => x.Project.TenantId == tenantId)
             .Include(x => x.IssueLabels)
             .ThenInclude(x => x.Label)
             .FirstOrDefaultAsync(x => x.Id == command.IssueId, cancellationToken)
             ?? throw new InvalidOperationException("Issue not found.");
 
+        var assigneeId = command.AssigneeId;
+        if (assigneeId.HasValue)
+        {
+            var assigneeBelongsToTenant = await dbContext.Users
+                .AnyAsync(x => x.Id == assigneeId.Value && x.TenantId == tenantId, cancellationToken);
+            if (!assigneeBelongsToTenant)
+            {
+                assigneeId = null;
+            }
+        }
+
         issue.Title = command.Title.Trim();
         issue.Description = command.Description.Trim();
         issue.Priority = command.Priority;
-        issue.AssigneeId = command.AssigneeId;
+        issue.AssigneeId = assigneeId;
         issue.UpdatedUtc = DateTimeOffset.UtcNow;
 
         dbContext.IssueLabels.RemoveRange(issue.IssueLabels);
@@ -271,7 +313,7 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
         dbContext.AuditEvents.Add(new AuditEvent
         {
             IssueId = issue.Id,
-            ActorId = issue.ReporterId,
+            ActorId = actorId,
             EventType = "IssueUpdated",
             Description = $"Updated title, description, assignee, priority, or labels on {issue.Key}."
         });
@@ -281,13 +323,18 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
     public async Task MoveIssueAsync(MoveIssueCommand command, CancellationToken cancellationToken = default)
     {
+        var tenantId = GetTenantIdOrThrow();
+        var actorId = GetUserIdOrThrow();
+
         var issue = await dbContext.Issues
+            .Where(x => x.Project.TenantId == tenantId)
             .Include(x => x.Status)
             .FirstOrDefaultAsync(x => x.Id == command.IssueId, cancellationToken)
             ?? throw new InvalidOperationException("Issue not found.");
 
         var targetStatus = await dbContext.IssueStatuses
-            .FirstOrDefaultAsync(x => x.Id == command.TargetStatusId, cancellationToken)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == command.TargetStatusId && x.ProjectId == issue.ProjectId, cancellationToken)
             ?? throw new InvalidOperationException("Target status not found.");
 
         if (issue.StatusId == targetStatus.Id)
@@ -302,7 +349,7 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
         dbContext.AuditEvents.Add(new AuditEvent
         {
             IssueId = issue.Id,
-            ActorId = command.ActorId,
+            ActorId = actorId,
             EventType = "StatusChanged",
             Description = $"{issue.Key} moved from {fromStatus} to {targetStatus.Name}."
         });
@@ -323,20 +370,23 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
     public async Task AddCommentAsync(AddCommentCommand command, CancellationToken cancellationToken = default)
     {
-        var issue = await dbContext.Issues.FirstOrDefaultAsync(x => x.Id == command.IssueId, cancellationToken)
+        var tenantId = GetTenantIdOrThrow();
+        var actorId = GetUserIdOrThrow();
+        var issue = await dbContext.Issues
+            .FirstOrDefaultAsync(x => x.Id == command.IssueId && x.Project.TenantId == tenantId, cancellationToken)
             ?? throw new InvalidOperationException("Issue not found.");
 
         dbContext.Comments.Add(new Comment
         {
             IssueId = issue.Id,
-            AuthorId = command.AuthorId,
+            AuthorId = actorId,
             Body = command.Body.Trim()
         });
 
         dbContext.AuditEvents.Add(new AuditEvent
         {
             IssueId = issue.Id,
-            ActorId = command.AuthorId,
+            ActorId = actorId,
             EventType = "CommentAdded",
             Description = $"Added a comment to {issue.Key}."
         });
@@ -354,9 +404,9 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
         var tenant = new Tenant { Name = "Demo Company", Key = "DEMO" };
 
-        var admin = new AppUser { DisplayName = "Avery Architect", Email = "avery@joura.local", Role = ProjectRole.Admin };
-        var pm = new AppUser { DisplayName = "Priya PM", Email = "priya@joura.local", Role = ProjectRole.ProjectManager };
-        var developer = new AppUser { DisplayName = "Devon Developer", Email = "devon@joura.local", Role = ProjectRole.Member };
+        var admin = new AppUser { Tenant = tenant, DisplayName = "Avery Architect", Email = "avery@joura.local", Role = ProjectRole.Admin };
+        var pm = new AppUser { Tenant = tenant, DisplayName = "Priya PM", Email = "priya@joura.local", Role = ProjectRole.ProjectManager };
+        var developer = new AppUser { Tenant = tenant, DisplayName = "Devon Developer", Email = "devon@joura.local", Role = ProjectRole.Member };
 
         var project = new Project
         {
@@ -440,8 +490,10 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
     private async Task<List<IssueSummaryDto>> LoadIssueSummariesAsync(CancellationToken cancellationToken)
     {
+        var tenantId = GetTenantIdOrThrow();
         var issues = await dbContext.Issues
             .AsNoTracking()
+            .Where(x => x.Project.TenantId == tenantId)
             .Include(x => x.Project)
             .Include(x => x.Status)
             .Include(x => x.Assignee)
@@ -493,5 +545,17 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
         dbContext.Labels.Add(label);
         return label;
+    }
+
+    private Guid GetTenantIdOrThrow()
+    {
+        return currentUserContext.TenantId
+            ?? throw new InvalidOperationException("Authenticated tenant is missing.");
+    }
+
+    private Guid GetUserIdOrThrow()
+    {
+        return currentUserContext.UserId
+            ?? throw new InvalidOperationException("Authenticated user is missing.");
     }
 }
