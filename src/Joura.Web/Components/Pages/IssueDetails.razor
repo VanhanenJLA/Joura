@@ -59,10 +59,14 @@ else
                 <div class="form-grid">
                     <label class="full-width">
                         <span>Comment</span>
-                        <InputTextArea @bind-Value="commentForm.Body" />
+                        <InputTextArea class="comment-input"
+                                       placeholder="Add a comment..."
+                                       rows="1"
+                                       oninput="this.style.height='auto'; this.style.height=this.scrollHeight + 'px';"
+                                       @bind-Value="commentForm.Body" />
                     </label>
                 </div>
-                <button class="action-button" type="submit">Add comment</button>
+                <button class="action-button" type="submit">Submit</button>
             </EditForm>
 
             <div class="timeline">

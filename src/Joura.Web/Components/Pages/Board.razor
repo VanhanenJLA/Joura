@@ -40,7 +40,6 @@ else
                  @ondrop="@(() => HandleDropAsync(column.StatusId))">
                 <div class="board-column-header">
                     <div>
-                        <span class="pill">@column.Category</span>
                         <h2>@column.StatusName</h2>
                     </div>
                     <strong>@column.Issues.Count</strong>
@@ -54,21 +53,12 @@ else
                          @onmousedown="@(() => StartDrag(issue.Id, issue.StatusId))"
                          @ondragend="EndDrag">
                         <a href="/issues/@issue.Id">
-                            <strong>@issue.Key</strong>
                             <p>@issue.Title</p>
                         </a>
                         <div class="ticket-footer">
                             <span>@(issue.AssigneeName ?? "Unassigned")</span>
-                            <label>
-                                <span>Move</span>
-                                <select value="@issue.StatusId" @onchange="@(args => MoveIssueAsync(issue.Id, Guid.Parse(args.Value?.ToString() ?? string.Empty)))">
-                                    @foreach (var status in statuses)
-                                    {
-                                        <option value="@status.Id">@status.Name</option>
-                                    }
-                                </select>
-                            </label>
                         </div>
+                        @issue.Key
                     </div>
                 }
             </div>

@@ -99,8 +99,14 @@ input, textarea, select {
 }
 
 textarea {
-    min-height: 7rem;
+    min-height: auto;
     resize: vertical;
+}
+
+.comment-input {
+    min-height: 0;
+    resize: none;
+    overflow-y: hidden;
 }
 
 button {
