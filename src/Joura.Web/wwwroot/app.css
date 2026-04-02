@@ -330,8 +330,14 @@ section + section {
 
 .issues-grid-table {
     width: 100%;
+    min-width: 920px;
     border-collapse: separate;
     border-spacing: 0;
+}
+
+.issues-grid-scroll {
+    width: 100%;
+    overflow-x: auto;
 }
 
 .issues-grid-table thead th {

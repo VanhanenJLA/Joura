@@ -77,31 +77,33 @@ else
             <span class="selection-summary">@selectedIssueIds.Count selected</span>
         </div>
 
-        <QuickGrid Items="issues.AsQueryable()" Class="issues-grid-table">
-            <TemplateColumn>
-                <HeaderTemplate>
-                    <input type="checkbox"
-                           title="Select all visible issues"
-                           checked="@AreAllVisibleSelected"
-                           @onchange="ToggleAllVisibleSelection" />
-                </HeaderTemplate>
-                <ChildContent Context="issue">
-                    <input type="checkbox"
-                           title="Select issue"
-                           checked="@selectedIssueIds.Contains(issue.Id)"
-                           @onchange="args => ToggleIssueSelection(issue.Id, args)" />
-                </ChildContent>
-            </TemplateColumn>
-            <PropertyColumn Property="x => x.Key" Title="Key" Sortable="true" />
-            <PropertyColumn Property="x => x.Title" Title="Title" Sortable="true" />
-            <PropertyColumn Property="x => x.ProjectKey" Title="Project" Sortable="true" />
-            <PropertyColumn Property="x => x.StatusName" Title="Status" Sortable="true" />
-            <PropertyColumn Property="x => x.Priority" Title="Priority" Sortable="true" />
-            <TemplateColumn Title="Assignee">
-                @(context.AssigneeName ?? "Unassigned")
-            </TemplateColumn>
-            <PropertyColumn Property="x => x.UpdatedUtc" Title="Updated" Sortable="true" />
-        </QuickGrid>
+        <div class="issues-grid-scroll">
+            <QuickGrid Items="issues.AsQueryable()" Class="issues-grid-table">
+                <TemplateColumn>
+                    <HeaderTemplate>
+                        <input type="checkbox"
+                               title="Select all visible issues"
+                               checked="@AreAllVisibleSelected"
+                               @onchange="ToggleAllVisibleSelection" />
+                    </HeaderTemplate>
+                    <ChildContent Context="issue">
+                        <input type="checkbox"
+                               title="Select issue"
+                               checked="@selectedIssueIds.Contains(issue.Id)"
+                               @onchange="args => ToggleIssueSelection(issue.Id, args)" />
+                    </ChildContent>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.Key" Title="Key" Sortable="true" />
+                <PropertyColumn Property="x => x.Title" Title="Title" Sortable="true" />
+                <PropertyColumn Property="x => x.ProjectKey" Title="Project" Sortable="true" />
+                <PropertyColumn Property="x => x.StatusName" Title="Status" Sortable="true" />
+                <PropertyColumn Property="x => x.Priority" Title="Priority" Sortable="true" />
+                <TemplateColumn Title="Assignee">
+                    @(context.AssigneeName ?? "Unassigned")
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.UpdatedUtc" Title="Updated" Sortable="true" />
+            </QuickGrid>
+        </div>
     </section>
 }
 
