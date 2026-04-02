@@ -1,0 +1,80 @@
+@page "/me"
+@rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject JouraDbContext DbContext
+
+<PageTitle>My Profile</PageTitle>
+
+@if (profile is null)
+{
+    <p class="empty-state">Loading profile...</p>
+}
+else
+{
+    <section class="panel-card">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">Account</p>
+                <h1>My profile</h1>
+            </div>
+        </div>
+
+        <div class="detail-grid">
+            <div class="subpanel-card">
+                <h2>Identity</h2>
+                <div class="tag-row">
+                    <InitialismAvatar Name="@profile.DisplayName" />
+                </div>
+                <dl class="meta-list">
+                    <div><dt>Name</dt><dd>@profile.DisplayName</dd></div>
+                    <div><dt>Email</dt><dd>@profile.Email</dd></div>
+                    <div><dt>Role</dt><dd>@profile.Role</dd></div>
+                </dl>
+            </div>
+
+            <div class="subpanel-card">
+                <h2>Tenant</h2>
+                <dl class="meta-list">
+                    <div><dt>Tenant</dt><dd>@profile.TenantName</dd></div>
+                    <div><dt>Key</dt><dd>@profile.TenantKey</dd></div>
+                    <div><dt>Member since</dt><dd>@profile.CreatedUtc.ToLocalTime().ToString("dd MMM yyyy")</dd></div>
+                </dl>
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    private ProfileView? profile;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userIdClaim = authenticationState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId))
+        {
+            return;
+        }
+
+        profile = await DbContext.Users
+            .AsNoTracking()
+            .Include(x => x.Tenant)
+            .Where(x => x.Id == userId)
+            .Select(x => new ProfileView(
+                x.DisplayName,
+                x.Email,
+                x.Role.ToString(),
+                x.Tenant.Name,
+                x.Tenant.Key,
+                x.CreatedUtc))
+            .FirstOrDefaultAsync();
+    }
+
+    private sealed record ProfileView(
+        string DisplayName,
+        string Email,
+        string Role,
+        string TenantName,
+        string TenantKey,
+        DateTimeOffset CreatedUtc);
+}
