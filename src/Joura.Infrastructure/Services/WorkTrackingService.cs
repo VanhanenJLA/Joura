@@ -484,6 +484,7 @@ public sealed class WorkTrackingService(
 
         var userByName = tenantUsers.ToDictionary(x => x.DisplayName, StringComparer.OrdinalIgnoreCase);
         var issues = new List<Issue>();
+        var issueCreatedAuditEvents = new List<AuditEvent>();
         foreach (var blueprint in issueBlueprints)
         {
             var issue = new Issue
@@ -505,11 +506,20 @@ public sealed class WorkTrackingService(
             }
 
             issues.Add(issue);
+            issueCreatedAuditEvents.Add(new AuditEvent
+            {
+                Issue = issue,
+                Actor = issue.Reporter,
+                EventType = "IssueCreated",
+                Description = $"Created issue {issue.Key}.",
+                CreatedUtc = issue.CreatedUtc
+            });
         }
 
         dbContext.AddRange(tenant, project, todo, inProgress, done);
         dbContext.Users.AddRange(tenantUsers);
         dbContext.Issues.AddRange(issues);
+        dbContext.AuditEvents.AddRange(issueCreatedAuditEvents);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
