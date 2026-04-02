@@ -60,8 +60,11 @@ else
                             <p>@issue.Title</p>
                         </a>
                         <div class="ticket-footer">
-                            <span class="issue-key">@issue.Key</span>
-                            <InitialismAvatar Name="@issue.AssigneeName" />
+                            <span class="issue-key" title="@issue.Type.ToString()">@GetIssueTypeEmoji(issue.Type) @issue.Key</span>
+                            <span class="ticket-assignee">
+                                <span title="@issue.Priority.ToString()">@GetPriorityEmoji(issue.Priority)</span>
+                                <InitialismAvatar Name="@issue.AssigneeName" />
+                            </span>
                         </div>
                     </div>
                 }
@@ -316,6 +319,22 @@ else
             ? []
             : labels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
+
+    private static string GetIssueTypeEmoji(IssueType type) => type switch
+    {
+        IssueType.Story => "📖",
+        IssueType.Task => "🛠️",
+        IssueType.Bug => "🐞",
+        _ => "📌"
+    };
+
+    private static string GetPriorityEmoji(IssuePriority priority) => priority switch
+    {
+        IssuePriority.High => "🔴",
+        IssuePriority.Medium => "🟡",
+        IssuePriority.Low => "🟢",
+        _ => "⚪"
+    };
 
     private sealed class CreateIssueForm
     {
