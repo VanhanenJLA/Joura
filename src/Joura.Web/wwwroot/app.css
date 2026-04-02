@@ -197,6 +197,10 @@ button {
     padding: 1.35rem;
 }
 
+section + section {
+    margin-top: 1.5rem;
+}
+
 .subpanel-card {
     background: var(--surface-strong);
 }
@@ -432,6 +436,14 @@ button {
     border-radius: 1rem;
     padding: 1rem;
     background: rgba(255, 255, 255, 0.7);
+}
+
+.timeline article + article {
+    margin-top: 0.75rem;
+}
+
+.comment-form {
+    margin-bottom: 1rem;
 }
 
 @media (max-width: 1024px) {
