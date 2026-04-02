@@ -29,6 +29,7 @@ public sealed record IssueSummaryDto(
     string ReporterName,
     IssuePriority Priority,
     IssueType Type,
+    DateOnly? DueDate,
     IReadOnlyList<LabelDto> Labels,
     DateTimeOffset UpdatedUtc);
 
@@ -44,6 +45,7 @@ public sealed record IssueDetailDto(
     string ReporterName,
     IssuePriority Priority,
     IssueType Type,
+    DateOnly? DueDate,
     IReadOnlyList<LabelDto> Labels,
     IReadOnlyList<CommentDto> Comments,
     IReadOnlyList<AuditEventDto> AuditTrail);

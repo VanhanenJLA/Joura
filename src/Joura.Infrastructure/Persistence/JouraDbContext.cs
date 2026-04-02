@@ -67,6 +67,7 @@ public sealed class JouraDbContext(DbContextOptions<JouraDbContext> options) : D
             entity.Property(x => x.Key).HasMaxLength(32);
             entity.Property(x => x.Title).HasMaxLength(240);
             entity.Property(x => x.Description).HasColumnType("text");
+            entity.Property(x => x.DueDate).HasColumnType("date");
             entity.Property(x => x.RowVersion).IsRowVersion();
             entity.HasIndex(x => new { x.ProjectId, x.Key }).IsUnique();
             entity.HasOne(x => x.Assignee).WithMany().HasForeignKey(x => x.AssigneeId).OnDelete(DeleteBehavior.Restrict);

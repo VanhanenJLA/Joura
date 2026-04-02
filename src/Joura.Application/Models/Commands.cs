@@ -12,6 +12,7 @@ public sealed record CreateIssueCommand(
     IssuePriority Priority,
     Guid ReporterId,
     Guid? AssigneeId,
+    DateOnly? DueDate,
     IReadOnlyList<string> Labels);
 
 public sealed record UpdateIssueCommand(
@@ -21,6 +22,7 @@ public sealed record UpdateIssueCommand(
     IssueType Type,
     IssuePriority Priority,
     Guid? AssigneeId,
+    DateOnly? DueDate,
     IReadOnlyList<string> Labels);
 
 public sealed record MoveIssueCommand(Guid IssueId, Guid TargetStatusId, Guid ActorId);

@@ -175,6 +175,7 @@ public sealed class WorkTrackingService(
                 issue.Reporter.DisplayName,
                 issue.Priority,
                 issue.Type,
+                issue.DueDate,
                 issue.IssueLabels.Select(x => new LabelDto(x.LabelId, x.Label.Name, x.Label.Color)).ToList(),
                 issue.Comments.Select(x => new CommentDto(x.Author.DisplayName, x.Body, x.CreatedUtc)).ToList(),
                 issue.AuditEvents.Select(x => new AuditEventDto(x.Actor.DisplayName, x.EventType, x.Description, x.CreatedUtc)).ToList());
@@ -240,7 +241,8 @@ public sealed class WorkTrackingService(
             Title = command.Title.Trim(),
             Description = command.Description.Trim(),
             Type = command.Type,
-            Priority = command.Priority
+            Priority = command.Priority,
+            DueDate = command.DueDate
         };
 
         foreach (var labelName in command.Labels.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct(StringComparer.OrdinalIgnoreCase))
@@ -300,6 +302,7 @@ public sealed class WorkTrackingService(
         issue.Description = command.Description.Trim();
         issue.Type = command.Type;
         issue.Priority = command.Priority;
+        issue.DueDate = command.DueDate;
         issue.AssigneeId = assigneeId;
         issue.UpdatedUtc = DateTimeOffset.UtcNow;
 
@@ -316,7 +319,7 @@ public sealed class WorkTrackingService(
             IssueId = issue.Id,
             ActorId = actorId,
             EventType = "IssueUpdated",
-            Description = $"Updated title, description, type, assignee, priority, or labels on {issue.Key}."
+            Description = $"Updated title, description, type, due date, assignee, priority, or labels on {issue.Key}."
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -412,9 +415,9 @@ public sealed class WorkTrackingService(
             ],
             issueBlueprints:
             [
-                ("JOU-1", "Define modular monolith boundaries", "Split the solution into domain, application, infrastructure, and web projects.", IssueType.Story, IssuePriority.High, "To Do", "Avery Architect", "Priya PM", new[] { "architecture" }),
-                ("JOU-2", "Wire PostgreSQL persistence", "Add EF Core, Npgsql, and the initial issue tracking schema.", IssueType.Task, IssuePriority.High, "In Progress", "Priya PM", "Devon Developer", new[] { "azure", "backend" }),
-                ("JOU-3", "Draft Azure target architecture", "Document App Service, PostgreSQL, Blob Storage, Key Vault, and Application Insights.", IssueType.Task, IssuePriority.Medium, "Done", "Avery Architect", "Devon Developer", new[] { "azure" })
+                ("JOU-1", "Define modular monolith boundaries", "Split the solution into domain, application, infrastructure, and web projects.", IssueType.Story, IssuePriority.High, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3).Date), "To Do", "Avery Architect", "Priya PM", new[] { "architecture" }),
+                ("JOU-2", "Wire PostgreSQL persistence", "Add EF Core, Npgsql, and the initial issue tracking schema.", IssueType.Task, IssuePriority.High, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7).Date), "In Progress", "Priya PM", "Devon Developer", new[] { "azure", "backend" }),
+                ("JOU-3", "Draft Azure target architecture", "Document App Service, PostgreSQL, Blob Storage, Key Vault, and Application Insights.", IssueType.Task, IssuePriority.Medium, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(12).Date), "Done", "Avery Architect", "Devon Developer", new[] { "azure" })
             ],
             cancellationToken);
 
@@ -432,9 +435,9 @@ public sealed class WorkTrackingService(
             ],
             issueBlueprints:
             [
-                ("ITSU-1", "Create customer onboarding flow", "Build signup and onboarding screens for the portal.", IssueType.Story, IssuePriority.High, "To Do", "Nina Ninja", "Paul Product", new[] { "frontend" }),
-                ("ITSU-2", "Implement account settings API", "Add backend endpoints for profile and preference updates.", IssueType.Task, IssuePriority.Medium, "In Progress", "Paul Product", "Mika Maker", new[] { "backend" }),
-                ("ITSU-3", "Enable audit export", "Support CSV export for tenant-level audit trail.", IssueType.Task, IssuePriority.Low, "Done", "Nina Ninja", "Mika Maker", new[] { "architecture" })
+                ("ITSU-1", "Create customer onboarding flow", "Build signup and onboarding screens for the portal.", IssueType.Story, IssuePriority.High, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5).Date), "To Do", "Nina Ninja", "Paul Product", new[] { "frontend" }),
+                ("ITSU-2", "Implement account settings API", "Add backend endpoints for profile and preference updates.", IssueType.Task, IssuePriority.Medium, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(9).Date), "In Progress", "Paul Product", "Mika Maker", new[] { "backend" }),
+                ("ITSU-3", "Enable audit export", "Support CSV export for tenant-level audit trail.", IssueType.Task, IssuePriority.Low, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(15).Date), "Done", "Nina Ninja", "Mika Maker", new[] { "architecture" })
             ],
             cancellationToken);
     }
@@ -446,7 +449,7 @@ public sealed class WorkTrackingService(
         string projectName,
         string projectDescription,
         IReadOnlyList<(string DisplayName, string Email, ProjectRole Role)> users,
-        IReadOnlyList<(string Key, string Title, string Description, IssueType Type, IssuePriority Priority, string StatusName, string ReporterName, string AssigneeName, IReadOnlyList<string> Labels)> issueBlueprints,
+        IReadOnlyList<(string Key, string Title, string Description, IssueType Type, IssuePriority Priority, DateOnly? DueDate, string StatusName, string ReporterName, string AssigneeName, IReadOnlyList<string> Labels)> issueBlueprints,
         CancellationToken cancellationToken)
     {
         if (await dbContext.Tenants.AnyAsync(x => x.Key == tenantKey, cancellationToken))
@@ -498,7 +501,8 @@ public sealed class WorkTrackingService(
                 Title = blueprint.Title,
                 Description = blueprint.Description,
                 Type = blueprint.Type,
-                Priority = blueprint.Priority
+                Priority = blueprint.Priority,
+                DueDate = blueprint.DueDate
             };
 
             foreach (var labelName in blueprint.Labels)
@@ -553,6 +557,7 @@ public sealed class WorkTrackingService(
                 issue.Reporter.DisplayName,
                 issue.Priority,
                 issue.Type,
+                issue.DueDate,
                 issue.IssueLabels.Select(label => new LabelDto(label.LabelId, label.Label.Name, label.Label.Color)).ToList(),
                 issue.UpdatedUtc))
             .ToList();

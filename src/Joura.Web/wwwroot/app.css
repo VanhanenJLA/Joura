@@ -612,6 +612,81 @@ section + section {
     grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
 }
 
+.calendar-shell {
+    overflow: hidden;
+}
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.calendar-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.calendar-controls .action-button {
+    min-height: 2.4rem;
+    padding: 0 0.95rem;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.65rem;
+}
+
+.calendar-weekdays {
+    margin-bottom: 0.55rem;
+}
+
+.calendar-weekday {
+    color: var(--muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.calendar-cell {
+    min-height: 8.5rem;
+    padding: 0.65rem;
+    border-radius: 0.9rem;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.62);
+    display: grid;
+    align-content: start;
+    gap: 0.35rem;
+}
+
+.calendar-cell-outside {
+    opacity: 0.55;
+}
+
+.calendar-day-number {
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+
+.calendar-issue-link {
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.65rem;
+    text-decoration: none;
+    border: 1px solid rgba(32, 58, 54, 0.14);
+    background: rgba(255, 250, 242, 0.82);
+}
+
+.calendar-issue-link:hover {
+    background: rgba(244, 239, 229, 0.9);
+}
+
 .meta-list div {
     display: flex;
     justify-content: space-between;
@@ -668,6 +743,15 @@ section + section {
     .filters-inline {
         grid-template-columns: 1fr;
     }
+
+    .calendar-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .calendar-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
 }
 
 @media (max-width: 640px) {
@@ -686,5 +770,14 @@ section + section {
         width: 100%;
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .calendar-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .calendar-grid {
+        grid-template-columns: 1fr;
     }
 }

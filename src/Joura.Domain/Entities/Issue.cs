@@ -18,6 +18,7 @@ public sealed class Issue : Entity
     public string Description { get; set; } = string.Empty;
     public IssueType Type { get; set; } = IssueType.Task;
     public IssuePriority Priority { get; set; } = IssuePriority.Medium;
+    public DateOnly? DueDate { get; set; }
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedUtc { get; set; } = DateTimeOffset.UtcNow;
     public uint RowVersion { get; set; }

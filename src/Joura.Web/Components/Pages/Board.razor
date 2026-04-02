@@ -131,6 +131,10 @@ else
                             }
                         </InputSelect>
                     </label>
+                    <label>
+                        <span>Due date</span>
+                        <InputDate @bind-Value="createIssueForm.DueDate" />
+                    </label>
                     <label class="full-width">
                         <span>Labels (comma separated)</span>
                         <InputText @bind-Value="createIssueForm.Labels" />
@@ -220,12 +224,14 @@ else
                 createIssueForm.Priority,
                 currentUserId.Value,
                 createIssueForm.AssigneeId,
+                createIssueForm.DueDate,
                 SplitLabels(createIssueForm.Labels)));
 
             createIssueForm.Title = string.Empty;
             createIssueForm.Description = string.Empty;
             createIssueForm.Labels = string.Empty;
             createIssueForm.AssigneeId = null;
+            createIssueForm.DueDate = null;
             createIssueForm.Type = IssueType.Task;
             createIssueForm.Priority = IssuePriority.Medium;
             showCreateIssueModal = false;
@@ -344,6 +350,7 @@ else
         public IssueType Type { get; set; } = IssueType.Task;
         public IssuePriority Priority { get; set; } = IssuePriority.Medium;
         public Guid? AssigneeId { get; set; }
+        public DateOnly? DueDate { get; set; }
         public string? Labels { get; set; }
     }
 }

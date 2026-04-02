@@ -71,6 +71,10 @@ else
                                 }
                             </InputSelect>
                         </label>
+                        <label>
+                            <span>Due date</span>
+                            <InputDate @bind-Value="editForm.DueDate" />
+                        </label>
                         <label class="full-width">
                             <span>Labels (comma separated)</span>
                             <InputText @bind-Value="editForm.Labels" />
@@ -100,6 +104,7 @@ else
                         <div><dt>Project</dt><dd>@issue.ProjectName</dd></div>
                         <div><dt>Type</dt><dd>@issue.Type</dd></div>
                         <div><dt>Priority</dt><dd>@issue.Priority</dd></div>
+                        <div><dt>Due date</dt><dd>@(issue.DueDate?.ToString("dd MMM yyyy") ?? "None")</dd></div>
                         <div>
                             <dt>Reporter</dt>
                             <dd class="meta-person">
@@ -227,6 +232,7 @@ else
         editForm.Type = issue.Type;
         editForm.Priority = issue.Priority;
         editForm.AssigneeId = users.FirstOrDefault(x => x.DisplayName == issue.AssigneeName)?.Id;
+        editForm.DueDate = issue.DueDate;
         editForm.Labels = string.Join(", ", issue.Labels.Select(x => x.Name));
         isEditing = true;
     }
@@ -253,6 +259,7 @@ else
                 editForm.Type,
                 editForm.Priority,
                 editForm.AssigneeId,
+                editForm.DueDate,
                 SplitLabels(editForm.Labels)));
             isEditing = false;
             await ReloadAsync();
@@ -275,6 +282,7 @@ else
         public IssueType Type { get; set; } = IssueType.Task;
         public IssuePriority Priority { get; set; } = IssuePriority.Medium;
         public Guid? AssigneeId { get; set; }
+        public DateOnly? DueDate { get; set; }
         public string? Labels { get; set; }
     }
 

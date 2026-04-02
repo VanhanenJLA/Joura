@@ -1,0 +1,139 @@
+@page "/calendar"
+@rendermode InteractiveServer
+@inject IWorkTrackingService WorkTrackingService
+
+<PageTitle>Calendar</PageTitle>
+
+<section class="panel-card calendar-shell">
+    <div class="calendar-header">
+        <div>
+            <p class="panel-kicker">Planning</p>
+            <h1>Due dates</h1>
+        </div>
+        <div class="calendar-controls">
+            <button type="button" class="action-button action-button-secondary" @onclick="PreviousMonth">Previous</button>
+            <strong>@MonthTitle</strong>
+            <button type="button" class="action-button action-button-secondary" @onclick="NextMonth">Next</button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <p class="empty-state">Loading due dates...</p>
+    }
+    else
+    {
+        <div class="calendar-grid calendar-weekdays">
+            @foreach (var dayName in weekDayNames)
+            {
+                <div class="calendar-weekday">@dayName</div>
+            }
+        </div>
+        <div class="calendar-grid">
+            @foreach (var day in visibleDays)
+            {
+                var isCurrentMonth = day.Month == currentMonth.Month && day.Year == currentMonth.Year;
+                <article class="calendar-cell @(isCurrentMonth ? string.Empty : "calendar-cell-outside")">
+                    <header class="calendar-day-number">@day.Day</header>
+                    @if (issuesByDate.TryGetValue(day, out var dayIssues))
+                    {
+                        foreach (var issue in dayIssues)
+                        {
+                            <a class="calendar-issue-link" href="/issues/@issue.Id">
+                                <span class="issue-key">@issue.Key</span>
+                                <span>@issue.Title</span>
+                            </a>
+                        }
+                    }
+                </article>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private readonly Dictionary<DateOnly, List<IssueSummaryDto>> issuesByDate = new();
+    private readonly List<DateOnly> visibleDays = [];
+    private readonly List<string> weekDayNames = [];
+    private DateOnly currentMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DayOfWeek firstDayOfWeek;
+    private bool isLoading;
+
+    private string MonthTitle => currentMonth.ToDateTime(TimeOnly.MinValue).ToString("MMMM yyyy");
+
+    protected override async Task OnInitializedAsync()
+    {
+        var culture = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat;
+        firstDayOfWeek = culture.FirstDayOfWeek;
+        weekDayNames.AddRange(GetWeekDayNames(culture.AbbreviatedDayNames));
+        BuildVisibleDays();
+        await LoadDueDatesAsync();
+    }
+
+    private async Task LoadDueDatesAsync()
+    {
+        isLoading = true;
+        try
+        {
+            issuesByDate.Clear();
+            var issues = await WorkTrackingService.SearchIssuesAsync(new IssueFilter(null, null, null, null, null));
+            foreach (var issue in issues.Where(x => x.DueDate.HasValue))
+            {
+                var dueDate = issue.DueDate!.Value;
+                if (!issuesByDate.TryGetValue(dueDate, out var dayIssues))
+                {
+                    dayIssues = [];
+                    issuesByDate[dueDate] = dayIssues;
+                }
+
+                dayIssues.Add(issue);
+            }
+
+            foreach (var dayIssues in issuesByDate.Values)
+            {
+                dayIssues.Sort((left, right) => string.Compare(left.Key, right.Key, StringComparison.Ordinal));
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void PreviousMonth()
+    {
+        currentMonth = currentMonth.AddMonths(-1);
+        BuildVisibleDays();
+    }
+
+    private void NextMonth()
+    {
+        currentMonth = currentMonth.AddMonths(1);
+        BuildVisibleDays();
+    }
+
+    private void BuildVisibleDays()
+    {
+        visibleDays.Clear();
+
+        var start = currentMonth;
+        while (start.DayOfWeek != firstDayOfWeek)
+        {
+            start = start.AddDays(-1);
+        }
+
+        for (var index = 0; index < 42; index++)
+        {
+            visibleDays.Add(start.AddDays(index));
+        }
+    }
+
+    private IEnumerable<string> GetWeekDayNames(string[] abbreviatedDayNames)
+    {
+        for (var offset = 0; offset < 7; offset++)
+        {
+            var day = (int)(firstDayOfWeek + offset) % 7;
+            yield return abbreviatedDayNames[day];
+        }
+    }
+}
