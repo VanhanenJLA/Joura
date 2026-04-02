@@ -1,0 +1,39 @@
+<span class="initialism-avatar"
+      title="@Tooltip"
+      aria-label="@Tooltip">
+    @Initials
+</span>
+
+@code {
+    [Parameter] public string? Name { get; set; }
+
+    private string Tooltip => string.IsNullOrWhiteSpace(Name) ? "Unassigned" : Name;
+
+    private string Initials
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(Name))
+            {
+                return "UA";
+            }
+
+            var parts = Name
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Take(2)
+                .ToArray();
+
+            if (parts.Length == 0)
+            {
+                return "UA";
+            }
+
+            if (parts.Length == 1)
+            {
+                return new string(parts[0].Take(2).ToArray()).ToUpperInvariant();
+            }
+
+            return string.Concat(parts.Select(x => char.ToUpperInvariant(x[0])));
+        }
+    }
+}

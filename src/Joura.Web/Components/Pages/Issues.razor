@@ -99,7 +99,7 @@ else
                 <PropertyColumn Property="x => x.StatusName" Title="Status" Sortable="true" />
                 <PropertyColumn Property="x => x.Priority" Title="Priority" Sortable="true" />
                 <TemplateColumn Title="Assignee">
-                    @(context.AssigneeName ?? "Unassigned")
+                    <InitialismAvatar Name="@context.AssigneeName" />
                 </TemplateColumn>
                 <PropertyColumn Property="x => x.UpdatedUtc" Title="Updated" Sortable="true" />
             </QuickGrid>

@@ -2,7 +2,7 @@
 @rendermode InteractiveServer
 @inject IWorkTrackingService WorkTrackingService
 
-<PageTitle>Dashboard</PageTitle>
+<PageTitle>Home</PageTitle>
 
 @if (overview is null)
 {
@@ -99,7 +99,7 @@ else
                         <p>@issue.Title</p>
                     </div>
                     <span>@issue.StatusName</span>
-                    <span>@issue.AssigneeName</span>
+                    <span><InitialismAvatar Name="@issue.AssigneeName" /></span>
                     <span>@issue.UpdatedUtc.ToLocalTime().ToString("dd MMM HH:mm")</span>
                 </a>
             }

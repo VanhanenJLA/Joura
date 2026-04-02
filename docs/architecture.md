@@ -36,7 +36,7 @@ The solution starts as a modular monolith. This keeps deployment, debugging, and
 - Solution structure
 - Core issue/project domain
 - PostgreSQL persistence
-- Dashboard, backlog, board, issue detail UI
+- Home, issues search, board, issue detail UI
 
 ### Phase 2
 

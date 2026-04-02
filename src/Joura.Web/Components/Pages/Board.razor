@@ -60,9 +60,9 @@ else
                             <p>@issue.Title</p>
                         </a>
                         <div class="ticket-footer">
-                            <span>@(issue.AssigneeName ?? "Unassigned")</span>
+                            <span class="issue-key">@issue.Key</span>
+                            <InitialismAvatar Name="@issue.AssigneeName" />
                         </div>
-                        @issue.Key
                     </div>
                 }
             </div>
