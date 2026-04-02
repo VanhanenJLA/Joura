@@ -413,7 +413,7 @@ public sealed class WorkTrackingService(
             [
                 ("JOU-1", "Define modular monolith boundaries", "Split the solution into domain, application, infrastructure, and web projects.", IssueType.Story, IssuePriority.High, "To Do", "Avery Architect", "Priya PM", new[] { "architecture" }),
                 ("JOU-2", "Wire PostgreSQL persistence", "Add EF Core, Npgsql, and the initial issue tracking schema.", IssueType.Task, IssuePriority.High, "In Progress", "Priya PM", "Devon Developer", new[] { "azure", "backend" }),
-                ("JOU-3", "Draft Azure target architecture", "Document App Service, PostgreSQL, Blob Storage, Key Vault, and Application Insights.", IssueType.Improvement, IssuePriority.Medium, "Done", "Avery Architect", "Devon Developer", new[] { "azure" })
+                ("JOU-3", "Draft Azure target architecture", "Document App Service, PostgreSQL, Blob Storage, Key Vault, and Application Insights.", IssueType.Task, IssuePriority.Medium, "Done", "Avery Architect", "Devon Developer", new[] { "azure" })
             ],
             cancellationToken);
 
@@ -433,7 +433,7 @@ public sealed class WorkTrackingService(
             [
                 ("ITSU-1", "Create customer onboarding flow", "Build signup and onboarding screens for the portal.", IssueType.Story, IssuePriority.High, "To Do", "Nina Ninja", "Paul Product", new[] { "frontend" }),
                 ("ITSU-2", "Implement account settings API", "Add backend endpoints for profile and preference updates.", IssueType.Task, IssuePriority.Medium, "In Progress", "Paul Product", "Mika Maker", new[] { "backend" }),
-                ("ITSU-3", "Enable audit export", "Support CSV export for tenant-level audit trail.", IssueType.Improvement, IssuePriority.Low, "Done", "Nina Ninja", "Mika Maker", new[] { "architecture" })
+                ("ITSU-3", "Enable audit export", "Support CSV export for tenant-level audit trail.", IssueType.Task, IssuePriority.Low, "Done", "Nina Ninja", "Mika Maker", new[] { "architecture" })
             ],
             cancellationToken);
     }

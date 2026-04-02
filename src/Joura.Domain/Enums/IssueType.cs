@@ -4,6 +4,5 @@ public enum IssueType
 {
     Story = 1,
     Task = 2,
-    Bug = 3,
-    Improvement = 4
+    Bug = 3
 }
