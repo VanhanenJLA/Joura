@@ -74,31 +74,34 @@ else
                 <p class="panel-kicker">Results</p>
                 <h2>@issues.Count issues</h2>
             </div>
+            <span class="selection-summary">@selectedIssueIds.Count selected</span>
         </div>
 
-        <div class="issue-list">
-            @foreach (var issue in issues)
-            {
-                <a class="issue-card" href="/issues/@issue.Id">
-                    <div class="issue-card-main">
-                        <div>
-                            <span class="issue-key">@issue.Key</span>
-                            <h3>@issue.Title</h3>
-                        </div>
-                        <div class="tag-row">
-                            <span class="pill">@issue.Type</span>
-                            <span class="pill">@issue.Priority</span>
-                            <span class="pill">@issue.StatusName</span>
-                        </div>
-                    </div>
-                    <div class="issue-card-meta">
-                        <span>@issue.ProjectKey</span>
-                        <span>@(issue.AssigneeName ?? "Unassigned")</span>
-                        <span>@issue.ReporterName</span>
-                    </div>
-                </a>
-            }
-        </div>
+        <QuickGrid Items="issues.AsQueryable()" Class="issues-grid-table">
+            <TemplateColumn>
+                <HeaderTemplate>
+                    <input type="checkbox"
+                           title="Select all visible issues"
+                           checked="@AreAllVisibleSelected"
+                           @onchange="ToggleAllVisibleSelection" />
+                </HeaderTemplate>
+                <ChildContent Context="issue">
+                    <input type="checkbox"
+                           title="Select issue"
+                           checked="@selectedIssueIds.Contains(issue.Id)"
+                           @onchange="args => ToggleIssueSelection(issue.Id, args)" />
+                </ChildContent>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.Key" Title="Key" Sortable="true" />
+            <PropertyColumn Property="x => x.Title" Title="Title" Sortable="true" />
+            <PropertyColumn Property="x => x.ProjectKey" Title="Project" Sortable="true" />
+            <PropertyColumn Property="x => x.StatusName" Title="Status" Sortable="true" />
+            <PropertyColumn Property="x => x.Priority" Title="Priority" Sortable="true" />
+            <TemplateColumn Title="Assignee">
+                @(context.AssigneeName ?? "Unassigned")
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.UpdatedUtc" Title="Updated" Sortable="true" />
+        </QuickGrid>
     </section>
 }
 
@@ -107,6 +110,7 @@ else
     private List<ProjectReferenceDto> projects = [];
     private List<UserReferenceDto> users = [];
     private List<IssueSummaryDto> issues = [];
+    private readonly HashSet<Guid> selectedIssueIds = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -121,6 +125,43 @@ else
         issues = (await WorkTrackingService.SearchIssuesAsync(
             new IssueFilter(filter.SearchText, filter.ProjectId, filter.AssigneeId, filter.Category, filter.Priority)))
             .ToList();
+
+        var visibleIssueIds = issues.Select(x => x.Id).ToHashSet();
+        selectedIssueIds.RemoveWhere(x => !visibleIssueIds.Contains(x));
+    }
+
+    private bool AreAllVisibleSelected => issues.Count > 0 && issues.All(x => selectedIssueIds.Contains(x.Id));
+
+    private void ToggleAllVisibleSelection(ChangeEventArgs args)
+    {
+        var shouldSelectAll = args.Value is bool value && value;
+
+        if (shouldSelectAll)
+        {
+            foreach (var issue in issues)
+            {
+                selectedIssueIds.Add(issue.Id);
+            }
+            return;
+        }
+
+        foreach (var issue in issues)
+        {
+            selectedIssueIds.Remove(issue.Id);
+        }
+    }
+
+    private void ToggleIssueSelection(Guid issueId, ChangeEventArgs args)
+    {
+        var isSelected = args.Value is bool value && value;
+        if (isSelected)
+        {
+            selectedIssueIds.Add(issueId);
+        }
+        else
+        {
+            selectedIssueIds.Remove(issueId);
+        }
     }
 
     private sealed class IssueFilterState

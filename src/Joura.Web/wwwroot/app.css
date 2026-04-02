@@ -319,6 +319,41 @@ section + section {
     border-top: none;
 }
 
+.issues-results-table .issue-row {
+    grid-template-columns: minmax(0, 2fr) repeat(4, minmax(100px, 1fr));
+}
+
+.selection-summary {
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.issues-grid-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.issues-grid-table thead th {
+    padding: 0.65rem 0.55rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    text-align: left;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.issues-grid-table tbody td {
+    padding: 0.8rem 0.55rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+}
+
+.issues-grid-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
 .issue-row p,
 .issue-card h3,
 .board-ticket p,
