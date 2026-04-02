@@ -4,9 +4,16 @@
 
 <PageTitle>Search</PageTitle>
 
-@if (projects.Count == 0)
+@if (isLoading)
 {
-    <p class="empty-state">Loading backlog...</p>
+    <p class="empty-state">Loading issues...</p>
+}
+else if (projects.Count == 0)
+{
+    <section class="panel-card">
+        <p class="empty-state">No projects found for this tenant.</p>
+        <a class="text-link" href="/">Go to Home</a>
+    </section>
 }
 else
 {
@@ -133,13 +140,24 @@ else
     private List<UserReferenceDto> users = [];
     private List<IssueSummaryDto> issues = [];
     private readonly HashSet<Guid> selectedIssueIds = [];
+    private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        projects = (await WorkTrackingService.GetProjectsAsync()).ToList();
-        users = (await WorkTrackingService.GetUsersAsync()).ToList();
+        try
+        {
+            projects = (await WorkTrackingService.GetProjectsAsync()).ToList();
+            users = (await WorkTrackingService.GetUsersAsync()).ToList();
 
-        await RefreshIssuesAsync();
+            if (projects.Count > 0)
+            {
+                await RefreshIssuesAsync();
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task RefreshIssuesAsync()
