@@ -201,6 +201,10 @@ section + section {
     margin-top: 1.5rem;
 }
 
+.page-grid > section + section {
+    margin-top: 0;
+}
+
 .subpanel-card {
     background: var(--surface-strong);
 }

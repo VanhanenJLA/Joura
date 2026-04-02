@@ -402,7 +402,7 @@ public sealed class WorkTrackingService(
             tenantName: "Demo Company",
             projectKey: "JOU",
             projectName: "Joura Platform",
-            projectDescription: "Homemade issue tracking for when enterprise software feels like overkill.",
+            projectDescription: "Homemade issue tracking built on vibes.",
             users:
             [
                 ("Avery Architect", "avery@joura.local", ProjectRole.Admin),
@@ -418,22 +418,22 @@ public sealed class WorkTrackingService(
             cancellationToken);
 
         await SeedTenantAsync(
-            tenantKey: "NOVA",
-            tenantName: "Nova Works",
-            projectKey: "NOVA",
-            projectName: "Nova Customer Portal",
+            tenantKey: "ITSU",
+            tenantName: "Itsu Company",
+            projectKey: "ITSU",
+            projectName: "Itsu Customer Portal",
             projectDescription: "Second tenant to validate isolation across authentication and data access.",
             users:
             [
-                ("Nina Nova", "nina@nova.local", ProjectRole.Admin),
-                ("Paul Product", "paul@nova.local", ProjectRole.ProjectManager),
-                ("Mika Maker", "mika@nova.local", ProjectRole.Member)
+                ("Nina Ninja", "nina@joura.local", ProjectRole.Admin),
+                ("Paul Product", "paul@joura.local", ProjectRole.ProjectManager),
+                ("Mika Maker", "mika@joura.local", ProjectRole.Member)
             ],
             issueBlueprints:
             [
-                ("NOVA-1", "Create customer onboarding flow", "Build signup and onboarding screens for the portal.", IssueType.Story, IssuePriority.High, "To Do", "Nina Nova", "Paul Product", new[] { "frontend" }),
-                ("NOVA-2", "Implement account settings API", "Add backend endpoints for profile and preference updates.", IssueType.Task, IssuePriority.Medium, "In Progress", "Paul Product", "Mika Maker", new[] { "backend" }),
-                ("NOVA-3", "Enable audit export", "Support CSV export for tenant-level audit trail.", IssueType.Improvement, IssuePriority.Low, "Done", "Nina Nova", "Mika Maker", new[] { "architecture" })
+                ("ITSU-1", "Create customer onboarding flow", "Build signup and onboarding screens for the portal.", IssueType.Story, IssuePriority.High, "To Do", "Nina Ninja", "Paul Product", new[] { "frontend" }),
+                ("ITSU-2", "Implement account settings API", "Add backend endpoints for profile and preference updates.", IssueType.Task, IssuePriority.Medium, "In Progress", "Paul Product", "Mika Maker", new[] { "backend" }),
+                ("ITSU-3", "Enable audit export", "Support CSV export for tenant-level audit trail.", IssueType.Improvement, IssuePriority.Low, "Done", "Nina Ninja", "Mika Maker", new[] { "architecture" })
             ],
             cancellationToken);
     }
