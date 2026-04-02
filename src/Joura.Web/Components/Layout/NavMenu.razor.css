@@ -100,6 +100,12 @@
     color: #fff7ea;
 }
 
+.nav-user-display {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0.55rem;
+}
+
 .nav-scrollable {
     display: none;
 }

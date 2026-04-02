@@ -33,7 +33,10 @@
 
                 <div class="nav-group">Signed in as</div>
                 <div class="nav-item px-3">
-                    <span class="nav-link">@context.User.Identity?.Name</span>
+                    <span class="nav-link nav-user-display">
+                        <InitialismAvatar Name="@context.User.Identity?.Name" />
+                        <span>@context.User.Identity?.Name</span>
+                    </span>
                 </div>
                 <div class="nav-item px-3">
                     <form method="post" action="/auth/logout">
@@ -52,4 +55,3 @@
         </AuthorizeView>
     </nav>
 </div>
-
