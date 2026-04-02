@@ -118,6 +118,9 @@ else
                 <TemplateColumn Title="Assignee" SortBy="SortByAssignee">
                     <InitialismAvatar Name="@context.AssigneeName" />
                 </TemplateColumn>
+                <TemplateColumn Title="Due" SortBy="SortByDueDate">
+                    <span class="due-pill @GetDuePillClass(context.DueDate)">@GetDueDateText(context.DueDate)</span>
+                </TemplateColumn>
                 <TemplateColumn Title="Updated" SortBy="SortByUpdated">
                     @context.UpdatedUtc.ToLocalTime().ToString("dd MMM HH:mm")
                 </TemplateColumn>
@@ -133,6 +136,7 @@ else
     private static readonly GridSort<IssueSummaryDto> SortByStatus = GridSort<IssueSummaryDto>.ByAscending(x => x.StatusName);
     private static readonly GridSort<IssueSummaryDto> SortByPriority = GridSort<IssueSummaryDto>.ByAscending(x => x.Priority);
     private static readonly GridSort<IssueSummaryDto> SortByAssignee = GridSort<IssueSummaryDto>.ByAscending(x => x.AssigneeName ?? string.Empty);
+    private static readonly GridSort<IssueSummaryDto> SortByDueDate = GridSort<IssueSummaryDto>.ByAscending(x => x.DueDate ?? DateOnly.MaxValue);
     private static readonly GridSort<IssueSummaryDto> SortByUpdated = GridSort<IssueSummaryDto>.ByAscending(x => x.UpdatedUtc);
 
     private readonly IssueFilterState filter = new();
@@ -219,6 +223,32 @@ else
         IssuePriority.High => "priority-pill-high",
         _ => "priority-pill-default"
     };
+
+    private static string GetDueDateText(DateOnly? dueDate)
+    {
+        return dueDate?.ToString("dd MMM yyyy") ?? "No due date";
+    }
+
+    private static string GetDuePillClass(DateOnly? dueDate)
+    {
+        if (!dueDate.HasValue)
+        {
+            return "due-pill-none";
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        if (dueDate.Value < today)
+        {
+            return "due-pill-overdue";
+        }
+
+        if (dueDate.Value == today)
+        {
+            return "due-pill-today";
+        }
+
+        return "due-pill-upcoming";
+    }
 
     private sealed class IssueFilterState
     {

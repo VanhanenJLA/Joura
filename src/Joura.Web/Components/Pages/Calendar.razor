@@ -17,6 +17,39 @@
         </div>
     </div>
 
+    <div class="calendar-filters">
+        <label>
+            <span>Project</span>
+            <InputSelect @bind-Value="filter.ProjectId" @bind-Value:after="LoadDueDatesAsync">
+                <option value="">All</option>
+                @foreach (var project in projects)
+                {
+                    <option value="@project.Id">@project.Key</option>
+                }
+            </InputSelect>
+        </label>
+        <label>
+            <span>Assignee</span>
+            <InputSelect @bind-Value="filter.AssigneeId" @bind-Value:after="LoadDueDatesAsync">
+                <option value="">Anyone</option>
+                @foreach (var user in users)
+                {
+                    <option value="@user.Id">@user.DisplayName</option>
+                }
+            </InputSelect>
+        </label>
+        <label>
+            <span>Status</span>
+            <InputSelect @bind-Value="filter.Category" @bind-Value:after="LoadDueDatesAsync">
+                <option value="">All</option>
+                @foreach (var category in Enum.GetValues<IssueStatusCategory>())
+                {
+                    <option value="@category">@category</option>
+                }
+            </InputSelect>
+        </label>
+    </div>
+
     @if (isLoading)
     {
         <p class="empty-state">Loading due dates...</p>
@@ -55,6 +88,9 @@
     private readonly Dictionary<DateOnly, List<IssueSummaryDto>> issuesByDate = new();
     private readonly List<DateOnly> visibleDays = [];
     private readonly List<string> weekDayNames = [];
+    private readonly CalendarFilterState filter = new();
+    private List<ProjectReferenceDto> projects = [];
+    private List<UserReferenceDto> users = [];
     private DateOnly currentMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     private DayOfWeek firstDayOfWeek;
     private bool isLoading;
@@ -66,6 +102,8 @@
         var culture = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat;
         firstDayOfWeek = culture.FirstDayOfWeek;
         weekDayNames.AddRange(GetWeekDayNames(culture.AbbreviatedDayNames));
+        projects = (await WorkTrackingService.GetProjectsAsync()).ToList();
+        users = (await WorkTrackingService.GetUsersAsync()).ToList();
         BuildVisibleDays();
         await LoadDueDatesAsync();
     }
@@ -76,7 +114,8 @@
         try
         {
             issuesByDate.Clear();
-            var issues = await WorkTrackingService.SearchIssuesAsync(new IssueFilter(null, null, null, null, null));
+            var issues = await WorkTrackingService.SearchIssuesAsync(
+                new IssueFilter(null, filter.ProjectId, filter.AssigneeId, filter.Category, null));
             foreach (var issue in issues.Where(x => x.DueDate.HasValue))
             {
                 var dueDate = issue.DueDate!.Value;
@@ -135,5 +174,12 @@
             var day = (int)(firstDayOfWeek + offset) % 7;
             yield return abbreviatedDayNames[day];
         }
+    }
+
+    private sealed class CalendarFilterState
+    {
+        public Guid? ProjectId { get; set; }
+        public Guid? AssigneeId { get; set; }
+        public IssueStatusCategory? Category { get; set; }
     }
 }
