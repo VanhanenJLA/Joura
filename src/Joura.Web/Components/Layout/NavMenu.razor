@@ -1,0 +1,33 @@
+﻿<div class="brand-shell">
+    <div class="brand-mark">J</div>
+    <div>
+        <a class="navbar-brand" href="">Joura</a>
+        <p class="brand-caption">We have Jira at home.</p>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+        <div class="nav-group">Workspace</div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="nav-icon">01</span> Dashboard
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="issues">
+                <span class="nav-icon">02</span> Backlog
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="board">
+                <span class="nav-icon">03</span> Board
+            </NavLink>
+        </div>
+    </nav>
+</div>
+

@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: joura-postgres
+    environment:
+      POSTGRES_DB: joura
+      POSTGRES_USER: joura
+      POSTGRES_PASSWORD: joura
+    ports:
+      - "5432:5432"
+    volumes:
+      - joura-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U joura -d joura"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  joura-postgres-data:

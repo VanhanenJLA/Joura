@@ -1,0 +1,135 @@
+@page "/issues/{IssueId:guid}"
+@rendermode InteractiveServer
+@inject IWorkTrackingService WorkTrackingService
+
+<PageTitle>Issue</PageTitle>
+
+@if (issue is null)
+{
+    <p class="empty-state">Loading issue...</p>
+}
+else
+{
+    <section class="panel-card">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">@issue.Key</p>
+                <h1>@issue.Title</h1>
+            </div>
+            <div class="tag-row">
+                <span class="pill">@issue.Type</span>
+                <span class="pill">@issue.Priority</span>
+                <span class="pill">@issue.StatusName</span>
+            </div>
+        </div>
+
+        <div class="detail-grid">
+            <div class="subpanel-card">
+                <h2>Description</h2>
+                <p class="body-copy">@issue.Description</p>
+                <div class="tag-row">
+                    @foreach (var label in issue.Labels)
+                    {
+                        <span class="colored-pill" style="--pill-color:@label.Color">@label.Name</span>
+                    }
+                </div>
+            </div>
+
+            <div class="subpanel-card">
+                <h2>Context</h2>
+                <dl class="meta-list">
+                    <div><dt>Project</dt><dd>@issue.ProjectName</dd></div>
+                    <div><dt>Reporter</dt><dd>@issue.ReporterName</dd></div>
+                    <div><dt>Assignee</dt><dd>@(issue.AssigneeName ?? "Unassigned")</dd></div>
+                    <div><dt>Status</dt><dd>@issue.StatusName</dd></div>
+                </dl>
+            </div>
+        </div>
+    </section>
+
+    <section class="page-grid">
+        <div class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Discussion</p>
+                    <h2>Comments</h2>
+                </div>
+            </div>
+            <EditForm Model="commentForm" OnValidSubmit="AddCommentAsync">
+                <div class="form-grid">
+                    <label class="full-width">
+                        <span>Comment</span>
+                        <InputTextArea @bind-Value="commentForm.Body" />
+                    </label>
+                </div>
+                <button class="action-button" type="submit">Add comment</button>
+            </EditForm>
+
+            <div class="timeline">
+                @foreach (var comment in issue.Comments)
+                {
+                    <article class="timeline-item">
+                        <strong>@comment.AuthorName</strong>
+                        <span>@comment.CreatedUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</span>
+                        <p>@comment.Body</p>
+                    </article>
+                }
+            </div>
+        </div>
+
+        <div class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Audit</p>
+                    <h2>History</h2>
+                </div>
+            </div>
+            <div class="timeline">
+                @foreach (var audit in issue.AuditTrail)
+                {
+                    <article class="timeline-item">
+                        <strong>@audit.EventType</strong>
+                        <span>@audit.CreatedUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</span>
+                        <p>@audit.ActorName: @audit.Description</p>
+                    </article>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter] public Guid IssueId { get; set; }
+
+    private IssueDetailDto? issue;
+    private readonly CommentForm commentForm = new();
+    private List<UserReferenceDto> users = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = (await WorkTrackingService.GetUsersAsync()).ToList();
+        await ReloadAsync();
+    }
+
+    private async Task AddCommentAsync()
+    {
+        if (issue is null || users.Count == 0 || string.IsNullOrWhiteSpace(commentForm.Body))
+        {
+            return;
+        }
+
+        await WorkTrackingService.AddCommentAsync(new AddCommentCommand(issue.Id, users[0].Id, commentForm.Body));
+        commentForm.Body = string.Empty;
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        issue = await WorkTrackingService.GetIssueAsync(IssueId);
+    }
+
+    private sealed class CommentForm
+    {
+        public string Body { get; set; } = string.Empty;
+    }
+}

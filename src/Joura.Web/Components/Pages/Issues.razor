@@ -1,0 +1,246 @@
+@page "/issues"
+@rendermode InteractiveServer
+@inject IWorkTrackingService WorkTrackingService
+
+<PageTitle>Backlog</PageTitle>
+
+@if (projects.Count == 0 || users.Count == 0)
+{
+    <p class="empty-state">Loading backlog...</p>
+}
+else
+{
+    <section class="panel-card">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">Backlog</p>
+                <h1>Issue search and intake</h1>
+            </div>
+        </div>
+
+        <div class="page-grid">
+            <div class="subpanel-card">
+                <h2>Create issue</h2>
+                <EditForm Model="createForm" OnValidSubmit="CreateIssueAsync">
+                    <div class="form-grid">
+                        <label>
+                            <span>Project</span>
+                            <InputSelect @bind-Value="createForm.ProjectId">
+                                @foreach (var project in projects)
+                                {
+                                    <option value="@project.Id">@project.Key - @project.Name</option>
+                                }
+                            </InputSelect>
+                        </label>
+                        <label>
+                            <span>Type</span>
+                            <InputSelect @bind-Value="createForm.Type">
+                                @foreach (var type in Enum.GetValues<IssueType>())
+                                {
+                                    <option value="@type">@type</option>
+                                }
+                            </InputSelect>
+                        </label>
+                        <label class="full-width">
+                            <span>Title</span>
+                            <InputText @bind-Value="createForm.Title" />
+                        </label>
+                        <label class="full-width">
+                            <span>Description</span>
+                            <InputTextArea @bind-Value="createForm.Description" />
+                        </label>
+                        <label>
+                            <span>Priority</span>
+                            <InputSelect @bind-Value="createForm.Priority">
+                                @foreach (var priority in Enum.GetValues<IssuePriority>())
+                                {
+                                    <option value="@priority">@priority</option>
+                                }
+                            </InputSelect>
+                        </label>
+                        <label>
+                            <span>Assignee</span>
+                            <InputSelect @bind-Value="createForm.AssigneeId">
+                                <option value="">Unassigned</option>
+                                @foreach (var user in users)
+                                {
+                                    <option value="@user.Id">@user.DisplayName</option>
+                                }
+                            </InputSelect>
+                        </label>
+                        <label class="full-width">
+                            <span>Labels (comma separated)</span>
+                            <InputText @bind-Value="createForm.Labels" />
+                        </label>
+                    </div>
+                    <button class="action-button" type="submit">Add issue</button>
+                </EditForm>
+            </div>
+
+            <div class="subpanel-card">
+                <h2>Filters</h2>
+                <div class="form-grid">
+                    <label class="full-width">
+                        <span>Search</span>
+                        <InputText @bind-Value="filter.SearchText" @bind-Value:after="RefreshIssuesAsync" />
+                    </label>
+                    <label>
+                        <span>Project</span>
+                        <InputSelect @bind-Value="filter.ProjectId" @bind-Value:after="RefreshIssuesAsync">
+                            <option value="">All</option>
+                            @foreach (var project in projects)
+                            {
+                                <option value="@project.Id">@project.Key</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label>
+                        <span>Priority</span>
+                        <InputSelect @bind-Value="filter.Priority" @bind-Value:after="RefreshIssuesAsync">
+                            <option value="">All</option>
+                            @foreach (var priority in Enum.GetValues<IssuePriority>())
+                            {
+                                <option value="@priority">@priority</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label>
+                        <span>Status</span>
+                        <InputSelect @bind-Value="filter.Category" @bind-Value:after="RefreshIssuesAsync">
+                            <option value="">All</option>
+                            @foreach (var category in Enum.GetValues<IssueStatusCategory>())
+                            {
+                                <option value="@category">@category</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label>
+                        <span>Assignee</span>
+                        <InputSelect @bind-Value="filter.AssigneeId" @bind-Value:after="RefreshIssuesAsync">
+                            <option value="">Anyone</option>
+                            @foreach (var user in users)
+                            {
+                                <option value="@user.Id">@user.DisplayName</option>
+                            }
+                        </InputSelect>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel-card">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">Results</p>
+                <h2>@issues.Count issues</h2>
+            </div>
+        </div>
+
+        <div class="issue-list">
+            @foreach (var issue in issues)
+            {
+                <a class="issue-card" href="/issues/@issue.Id">
+                    <div class="issue-card-main">
+                        <div>
+                            <span class="issue-key">@issue.Key</span>
+                            <h3>@issue.Title</h3>
+                        </div>
+                        <div class="tag-row">
+                            <span class="pill">@issue.Type</span>
+                            <span class="pill">@issue.Priority</span>
+                            <span class="pill">@issue.StatusName</span>
+                        </div>
+                    </div>
+                    <div class="issue-card-meta">
+                        <span>@issue.ProjectKey</span>
+                        <span>@(issue.AssigneeName ?? "Unassigned")</span>
+                        <span>@issue.ReporterName</span>
+                    </div>
+                </a>
+            }
+        </div>
+    </section>
+}
+
+@code {
+    private readonly IssueFilterState filter = new();
+    private readonly CreateIssueForm createForm = new();
+    private List<ProjectReferenceDto> projects = [];
+    private List<UserReferenceDto> users = [];
+    private List<IssueSummaryDto> issues = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        projects = (await WorkTrackingService.GetProjectsAsync()).ToList();
+        users = (await WorkTrackingService.GetUsersAsync()).ToList();
+
+        if (projects.Count > 0)
+        {
+            createForm.ProjectId = projects[0].Id;
+        }
+
+        await RefreshIssuesAsync();
+    }
+
+    private async Task CreateIssueAsync()
+    {
+        if (createForm.ProjectId == Guid.Empty || string.IsNullOrWhiteSpace(createForm.Title))
+        {
+            return;
+        }
+
+        var reporterId = users[0].Id;
+        await WorkTrackingService.CreateIssueAsync(new CreateIssueCommand(
+            createForm.ProjectId,
+            createForm.Title,
+            createForm.Description ?? string.Empty,
+            createForm.Type,
+            createForm.Priority,
+            reporterId,
+            createForm.AssigneeId,
+            SplitLabels(createForm.Labels)));
+
+        createForm.Title = string.Empty;
+        createForm.Description = string.Empty;
+        createForm.Labels = string.Empty;
+        createForm.Priority = IssuePriority.Medium;
+        createForm.Type = IssueType.Task;
+
+        await RefreshIssuesAsync();
+    }
+
+    private async Task RefreshIssuesAsync()
+    {
+        issues = (await WorkTrackingService.SearchIssuesAsync(
+            new IssueFilter(filter.SearchText, filter.ProjectId, filter.AssigneeId, filter.Category, filter.Priority)))
+            .ToList();
+    }
+
+    private static IReadOnlyList<string> SplitLabels(string? labels)
+    {
+        return string.IsNullOrWhiteSpace(labels)
+            ? []
+            : labels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private sealed class IssueFilterState
+    {
+        public string? SearchText { get; set; }
+        public Guid? ProjectId { get; set; }
+        public Guid? AssigneeId { get; set; }
+        public IssueStatusCategory? Category { get; set; }
+        public IssuePriority? Priority { get; set; }
+    }
+
+    private sealed class CreateIssueForm
+    {
+        public Guid ProjectId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public IssueType Type { get; set; } = IssueType.Task;
+        public IssuePriority Priority { get; set; } = IssuePriority.Medium;
+        public Guid? AssigneeId { get; set; }
+        public string? Labels { get; set; }
+    }
+}

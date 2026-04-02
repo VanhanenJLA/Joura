@@ -1,0 +1,144 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@inject IWorkTrackingService WorkTrackingService
+
+<PageTitle>Dashboard</PageTitle>
+
+@if (overview is null)
+{
+    <p class="empty-state">Loading workspace...</p>
+}
+else
+{
+    <section class="hero-card">
+        <div>
+            <p class="hero-kicker">Workspace</p>
+            <h1>@overview.WorkspaceName</h1>
+            <p class="hero-copy">A playful little issue tracker for when the real thing is too much and the homemade version is good enough.</p>
+        </div>
+        <div class="hero-stats">
+            <div class="metric-card">
+                <span>Open</span>
+                <strong>@overview.OpenIssueCount</strong>
+            </div>
+            <div class="metric-card">
+                <span>Done</span>
+                <strong>@overview.CompletedIssueCount</strong>
+            </div>
+            <div class="metric-card">
+                <span>Projects</span>
+                <strong>@overview.Projects.Count</strong>
+            </div>
+        </div>
+    </section>
+
+    <section class="page-grid">
+        <div class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Projects</p>
+                    <h2>Workspace portfolio</h2>
+                </div>
+            </div>
+            <div class="project-grid">
+                @foreach (var project in overview.Projects)
+                {
+                    <a class="project-card" href="/board?projectId=@project.Id">
+                        <span class="project-key">@project.Key</span>
+                        <strong>@project.Name</strong>
+                        <span>@project.IssueCount issues</span>
+                        <span>@project.DoneIssueCount done</span>
+                    </a>
+                }
+            </div>
+        </div>
+
+        <div class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Create</p>
+                    <h2>New project</h2>
+                </div>
+            </div>
+
+            <EditForm Model="projectForm" OnValidSubmit="CreateProjectAsync">
+                <div class="form-grid">
+                    <label>
+                        <span>Name</span>
+                        <InputText @bind-Value="projectForm.Name" />
+                    </label>
+                    <label>
+                        <span>Key</span>
+                        <InputText @bind-Value="projectForm.Key" />
+                    </label>
+                    <label class="full-width">
+                        <span>Description</span>
+                        <InputTextArea @bind-Value="projectForm.Description" />
+                    </label>
+                </div>
+                <button class="action-button" type="submit">Create project</button>
+            </EditForm>
+        </div>
+    </section>
+
+    <section class="panel-card">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">Recent activity</p>
+                <h2>Latest issues</h2>
+            </div>
+            <a class="text-link" href="/issues">Open backlog</a>
+        </div>
+
+        <div class="issue-table">
+            @foreach (var issue in overview.RecentIssues)
+            {
+                <a class="issue-row" href="/issues/@issue.Id">
+                    <div>
+                        <strong>@issue.Key</strong>
+                        <p>@issue.Title</p>
+                    </div>
+                    <span>@issue.StatusName</span>
+                    <span>@issue.AssigneeName</span>
+                    <span>@issue.UpdatedUtc.ToLocalTime().ToString("dd MMM HH:mm")</span>
+                </a>
+            }
+        </div>
+    </section>
+}
+
+@code {
+    private WorkspaceOverviewDto? overview;
+    private readonly CreateProjectForm projectForm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task CreateProjectAsync()
+    {
+        if (string.IsNullOrWhiteSpace(projectForm.Name) || string.IsNullOrWhiteSpace(projectForm.Key))
+        {
+            return;
+        }
+
+        await WorkTrackingService.CreateProjectAsync(new CreateProjectCommand(projectForm.Name, projectForm.Key, projectForm.Description ?? string.Empty));
+        projectForm.Name = string.Empty;
+        projectForm.Key = string.Empty;
+        projectForm.Description = string.Empty;
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        overview = await WorkTrackingService.GetWorkspaceOverviewAsync();
+    }
+
+    private sealed class CreateProjectForm
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Key { get; set; } = string.Empty;
+        public string? Description { get; set; }
+    }
+}

@@ -1,0 +1,32 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row">
+            <div>
+                <p class="eyebrow">Joura</p>
+                <p class="top-title">We have Jira at home.</p>
+            </div>
+            <div class="top-meta">
+                <span>Blazor</span>
+                <span>.NET</span>
+                <span>PostgreSQL</span>
+                <span>Azure</span>
+            </div>
+        </div>
+
+        <article class="content">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>

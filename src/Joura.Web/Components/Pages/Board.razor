@@ -1,0 +1,188 @@
+@page "/board"
+@rendermode InteractiveServer
+@inject IWorkTrackingService WorkTrackingService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Board</PageTitle>
+
+@if (projects.Count == 0)
+{
+    <p class="empty-state">Loading board...</p>
+}
+else
+{
+    <section class="panel-card">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">Board</p>
+                <h1>Kanban overview</h1>
+            </div>
+            <label class="compact-field">
+                <span>Project</span>
+                <InputSelect @bind-Value="selectedProjectId" @bind-Value:after="LoadBoardAsync">
+                    @foreach (var project in projects)
+                    {
+                        <option value="@project.Id">@project.Key - @project.Name</option>
+                    }
+                </InputSelect>
+            </label>
+        </div>
+    </section>
+
+    <section class="board-grid">
+        @foreach (var column in columns)
+        {
+            <div class="board-column @(dropTargetStatusId == column.StatusId ? "board-column-active" : string.Empty)"
+                 ondragover="event.preventDefault();"
+                 @ondragenter="@(() => SetDropTarget(column.StatusId))"
+                 @ondragleave="@(() => ClearDropTarget(column.StatusId))"
+                 @ondragover:preventDefault="true"
+                 @ondrop="@(() => HandleDropAsync(column.StatusId))">
+                <div class="board-column-header">
+                    <div>
+                        <span class="pill">@column.Category</span>
+                        <h2>@column.StatusName</h2>
+                    </div>
+                    <strong>@column.Issues.Count</strong>
+                </div>
+                @foreach (var issue in column.Issues)
+                {
+                    <div class="board-ticket @(draggingIssueId == issue.Id ? "board-ticket-dragging" : string.Empty)"
+                         data-issue-id="@issue.Id"
+                         draggable="true"
+                         ondragstart="event.dataTransfer.setData('text/plain', this.dataset.issueId); event.dataTransfer.effectAllowed = 'move';"
+                         @onmousedown="@(() => StartDrag(issue.Id, issue.StatusId))"
+                         @ondragend="EndDrag">
+                        <a href="/issues/@issue.Id">
+                            <strong>@issue.Key</strong>
+                            <p>@issue.Title</p>
+                        </a>
+                        <div class="ticket-footer">
+                            <span>@(issue.AssigneeName ?? "Unassigned")</span>
+                            <label>
+                                <span>Move</span>
+                                <select value="@issue.StatusId" @onchange="@(args => MoveIssueAsync(issue.Id, Guid.Parse(args.Value?.ToString() ?? string.Empty)))">
+                                    @foreach (var status in statuses)
+                                    {
+                                        <option value="@status.Id">@status.Name</option>
+                                    }
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private List<ProjectReferenceDto> projects = [];
+    private List<KanbanColumnDto> columns = [];
+    private List<StatusReferenceDto> statuses = [];
+    private List<UserReferenceDto> users = [];
+    private Guid selectedProjectId;
+    private Guid? draggingIssueId;
+    private Guid? draggingFromStatusId;
+    private Guid? dropTargetStatusId;
+    private bool isMovingIssue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        projects = (await WorkTrackingService.GetProjectsAsync()).ToList();
+        users = (await WorkTrackingService.GetUsersAsync()).ToList();
+
+        if (projects.Count == 0)
+        {
+            return;
+        }
+
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var projectIdQuery = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("projectId", out var rawProjectId)
+            && Guid.TryParse(rawProjectId, out var parsedProjectId)
+            ? parsedProjectId
+            : projects[0].Id;
+
+        selectedProjectId = projects.Any(x => x.Id == projectIdQuery) ? projectIdQuery : projects[0].Id;
+        await LoadBoardAsync();
+    }
+
+    private async Task LoadBoardAsync()
+    {
+        if (selectedProjectId == Guid.Empty)
+        {
+            return;
+        }
+
+        statuses = (await WorkTrackingService.GetStatusesAsync(selectedProjectId)).ToList();
+        columns = (await WorkTrackingService.GetBoardAsync(selectedProjectId)).ToList();
+    }
+
+    private async Task MoveIssueAsync(Guid issueId, Guid statusId)
+    {
+        if (users.Count == 0 || isMovingIssue)
+        {
+            return;
+        }
+
+        try
+        {
+            isMovingIssue = true;
+            await WorkTrackingService.MoveIssueAsync(new MoveIssueCommand(issueId, statusId, users[0].Id));
+            await LoadBoardAsync();
+        }
+        finally
+        {
+            isMovingIssue = false;
+        }
+    }
+
+    private void StartDrag(Guid issueId, Guid statusId)
+    {
+        draggingIssueId = issueId;
+        draggingFromStatusId = statusId;
+        dropTargetStatusId = statusId;
+    }
+
+    private void EndDrag()
+    {
+        draggingIssueId = null;
+        draggingFromStatusId = null;
+        dropTargetStatusId = null;
+    }
+
+    private void SetDropTarget(Guid statusId)
+    {
+        if (draggingIssueId.HasValue)
+        {
+            dropTargetStatusId = statusId;
+        }
+    }
+
+    private void ClearDropTarget(Guid statusId)
+    {
+        if (dropTargetStatusId == statusId && draggingFromStatusId != statusId)
+        {
+            dropTargetStatusId = null;
+        }
+    }
+
+    private async Task HandleDropAsync(Guid statusId)
+    {
+        if (!draggingIssueId.HasValue)
+        {
+            return;
+        }
+
+        var issueId = draggingIssueId.Value;
+        var currentStatusId = draggingFromStatusId;
+        EndDrag();
+
+        if (currentStatusId == statusId)
+        {
+            return;
+        }
+
+        await MoveIssueAsync(issueId, statusId);
+    }
+}
