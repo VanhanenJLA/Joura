@@ -628,6 +628,12 @@ section + section {
     color: var(--muted);
 }
 
+.meta-person {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
 .timeline-item {
     border-radius: 1rem;
     padding: 1rem;

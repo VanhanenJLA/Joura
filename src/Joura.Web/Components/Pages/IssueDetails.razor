@@ -40,8 +40,20 @@ else
                 <h2>Context</h2>
                 <dl class="meta-list">
                     <div><dt>Project</dt><dd>@issue.ProjectName</dd></div>
-                    <div><dt>Reporter</dt><dd>@issue.ReporterName</dd></div>
-                    <div><dt>Assignee</dt><dd><InitialismAvatar Name="@issue.AssigneeName" /></dd></div>
+                    <div>
+                        <dt>Reporter</dt>
+                        <dd class="meta-person">
+                            <InitialismAvatar Name="@issue.ReporterName" />
+                            <span>@issue.ReporterName</span>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Assignee</dt>
+                        <dd class="meta-person">
+                            <InitialismAvatar Name="@issue.AssigneeName" />
+                            <span>@(issue.AssigneeName ?? "Unassigned")</span>
+                        </dd>
+                    </div>
                     <div><dt>Status</dt><dd>@issue.StatusName</dd></div>
                 </dl>
             </div>
