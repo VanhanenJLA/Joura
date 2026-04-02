@@ -4,7 +4,7 @@ namespace Joura.Application.Abstractions;
 
 public interface IWorkTrackingService
 {
-    Task<WorkspaceOverviewDto> GetWorkspaceOverviewAsync(CancellationToken cancellationToken = default);
+    Task<TenantOverviewDto> GetTenantOverviewAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ProjectReferenceDto>> GetProjectsAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<UserReferenceDto>> GetUsersAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<StatusReferenceDto>> GetStatusesAsync(Guid projectId, CancellationToken cancellationToken = default);

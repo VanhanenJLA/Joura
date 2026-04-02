@@ -2,8 +2,8 @@ using Joura.Domain.Enums;
 
 namespace Joura.Application.Models;
 
-public sealed record WorkspaceOverviewDto(
-    string WorkspaceName,
+public sealed record TenantOverviewDto(
+    string TenantName,
     IReadOnlyList<ProjectSummaryDto> Projects,
     IReadOnlyList<IssueSummaryDto> RecentIssues,
     int OpenIssueCount,

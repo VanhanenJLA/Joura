@@ -6,14 +6,14 @@
 
 @if (overview is null)
 {
-    <p class="empty-state">Loading workspace...</p>
+    <p class="empty-state">Loading tenant...</p>
 }
 else
 {
     <section class="hero-card">
         <div>
-            <p class="hero-kicker">Workspace</p>
-            <h1>@overview.WorkspaceName</h1>
+            <p class="hero-kicker">Tenant</p>
+            <h1>@overview.TenantName</h1>
             <p class="hero-copy">A playful little issue tracker for when the real thing is too much and the homemade version is good enough.</p>
         </div>
         <div class="hero-stats">
@@ -37,7 +37,7 @@ else
             <div class="panel-header">
                 <div>
                     <p class="panel-kicker">Projects</p>
-                    <h2>Workspace portfolio</h2>
+                    <h2>Tenant portfolio</h2>
                 </div>
             </div>
             <div class="project-grid">
@@ -108,7 +108,7 @@ else
 }
 
 @code {
-    private WorkspaceOverviewDto? overview;
+    private TenantOverviewDto? overview;
     private readonly CreateProjectForm projectForm = new();
 
     protected override async Task OnInitializedAsync()
@@ -132,7 +132,7 @@ else
 
     private async Task ReloadAsync()
     {
-        overview = await WorkTrackingService.GetWorkspaceOverviewAsync();
+        overview = await WorkTrackingService.GetTenantOverviewAsync();
     }
 
     private sealed class CreateProjectForm

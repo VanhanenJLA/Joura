@@ -9,7 +9,7 @@ Joura is a small Jira-style issue tracking practice project built as a modular m
 - `src/Joura.Domain`: core entities and enums
 - `src/Joura.Infrastructure`: EF Core persistence, PostgreSQL wiring, and work-tracking service implementation
 
-The app applies EF Core migrations and seeds a sample workspace and project on first run so the board and backlog are usable immediately after the database is available.
+The app applies EF Core migrations and seeds a sample tenant and project on first run so the board and backlog are usable immediately after the database is available.
 
 ## Run locally
 

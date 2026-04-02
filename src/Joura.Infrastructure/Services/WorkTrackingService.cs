@@ -9,17 +9,17 @@ namespace Joura.Infrastructure.Services;
 
 public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackingService
 {
-    public async Task<WorkspaceOverviewDto> GetWorkspaceOverviewAsync(CancellationToken cancellationToken = default)
+    public async Task<TenantOverviewDto> GetTenantOverviewAsync(CancellationToken cancellationToken = default)
     {
-        var workspace = await dbContext.Workspaces
+        var tenant = await dbContext.Tenants
             .Include(x => x.Projects)
             .ThenInclude(x => x.Issues)
             .ThenInclude(x => x.Status)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (workspace is null)
+        if (tenant is null)
         {
-            return new WorkspaceOverviewDto("No workspace", [], [], 0, 0);
+            return new TenantOverviewDto("No tenant", [], [], 0, 0);
         }
 
         var recentIssues = (await LoadIssueSummariesAsync(cancellationToken))
@@ -27,9 +27,9 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
             .Take(6)
             .ToList();
 
-        var issueCounts = workspace.Projects.SelectMany(x => x.Issues).ToList();
+        var issueCounts = tenant.Projects.SelectMany(x => x.Issues).ToList();
 
-        var projects = workspace.Projects
+        var projects = tenant.Projects
             .OrderBy(x => x.Name)
             .Select(project => new ProjectSummaryDto(
                 project.Id,
@@ -39,8 +39,8 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
                 project.Issues.Count(issue => issue.Status.Category == IssueStatusCategory.Done)))
             .ToList();
 
-        return new WorkspaceOverviewDto(
-            workspace.Name,
+        return new TenantOverviewDto(
+            tenant.Name,
             projects,
             recentIssues,
             issueCounts.Count(x => x.Status.Category != IssueStatusCategory.Done),
@@ -169,12 +169,12 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
     public async Task<Guid> CreateProjectAsync(CreateProjectCommand command, CancellationToken cancellationToken = default)
     {
-        var workspace = await dbContext.Workspaces.FirstOrDefaultAsync(cancellationToken)
-            ?? throw new InvalidOperationException("Workspace missing. Seed data first.");
+        var tenant = await dbContext.Tenants.FirstOrDefaultAsync(cancellationToken)
+            ?? throw new InvalidOperationException("Tenant missing. Seed data first.");
 
         var project = new Project
         {
-            WorkspaceId = workspace.Id,
+            TenantId = tenant.Id,
             Name = command.Name.Trim(),
             Key = command.Key.Trim().ToUpperInvariant(),
             Description = command.Description.Trim()
@@ -347,12 +347,12 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
     public async Task SeedSampleDataAsync(CancellationToken cancellationToken = default)
     {
-        if (await dbContext.Workspaces.AnyAsync(cancellationToken))
+        if (await dbContext.Tenants.AnyAsync(cancellationToken))
         {
             return;
         }
 
-        var workspace = new Workspace { Name = "We have Jira at home.", Key = "HOME" };
+        var tenant = new Tenant { Name = "We have Jira at home.", Key = "HOME" };
 
         var admin = new AppUser { DisplayName = "Avery Architect", Email = "avery@joura.local", Role = ProjectRole.Admin };
         var pm = new AppUser { DisplayName = "Priya PM", Email = "priya@joura.local", Role = ProjectRole.ProjectManager };
@@ -360,7 +360,7 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
 
         var project = new Project
         {
-            Workspace = workspace,
+            Tenant = tenant,
             Name = "Joura Platform",
             Key = "JOU",
             Description = "Homemade issue tracking for when enterprise software feels like overkill."
@@ -420,7 +420,7 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
         };
         issue3.IssueLabels.Add(new IssueLabel { Issue = issue3, Label = labels[1] });
 
-        dbContext.AddRange(workspace, admin, pm, developer, project, todo, inProgress, done);
+        dbContext.AddRange(tenant, admin, pm, developer, project, todo, inProgress, done);
         dbContext.Labels.AddRange(labels);
         dbContext.Issues.AddRange(issue1, issue2, issue3);
         dbContext.Comments.AddRange(

@@ -6,7 +6,7 @@ namespace Joura.Infrastructure.Persistence;
 public sealed class JouraDbContext(DbContextOptions<JouraDbContext> options) : DbContext(options)
 {
     public DbSet<AppUser> Users => Set<AppUser>();
-    public DbSet<Workspace> Workspaces => Set<Workspace>();
+    public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<IssueStatus> IssueStatuses => Set<IssueStatus>();
     public DbSet<Issue> Issues => Set<Issue>();
@@ -26,7 +26,7 @@ public sealed class JouraDbContext(DbContextOptions<JouraDbContext> options) : D
             entity.HasIndex(x => x.Email).IsUnique();
         });
 
-        modelBuilder.Entity<Workspace>(entity =>
+        modelBuilder.Entity<Tenant>(entity =>
         {
             entity.Property(x => x.Name).HasMaxLength(120);
             entity.Property(x => x.Key).HasMaxLength(20);

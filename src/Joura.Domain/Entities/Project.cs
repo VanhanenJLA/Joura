@@ -4,8 +4,8 @@ namespace Joura.Domain.Entities;
 
 public sealed class Project : Entity
 {
-    public Guid WorkspaceId { get; set; }
-    public Workspace Workspace { get; set; } = null!;
+    public Guid TenantId { get; set; }
+    public Tenant Tenant { get; set; } = null!;
     public required string Name { get; set; }
     public required string Key { get; set; }
     public string Description { get; set; } = string.Empty;
