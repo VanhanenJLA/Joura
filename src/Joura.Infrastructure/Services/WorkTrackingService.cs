@@ -352,7 +352,7 @@ public sealed class WorkTrackingService(JouraDbContext dbContext) : IWorkTrackin
             return;
         }
 
-        var tenant = new Tenant { Name = "We have Jira at home.", Key = "HOME" };
+        var tenant = new Tenant { Name = "Demo Company", Key = "DEMO" };
 
         var admin = new AppUser { DisplayName = "Avery Architect", Email = "avery@joura.local", Role = ProjectRole.Admin };
         var pm = new AppUser { DisplayName = "Priya PM", Email = "priya@joura.local", Role = ProjectRole.ProjectManager };
