@@ -397,94 +397,119 @@ public sealed class WorkTrackingService(
 
     public async Task SeedSampleDataAsync(CancellationToken cancellationToken = default)
     {
-        if (await dbContext.Tenants.AnyAsync(cancellationToken))
+        await SeedTenantAsync(
+            tenantKey: "DEMO",
+            tenantName: "Demo Company",
+            projectKey: "JOU",
+            projectName: "Joura Platform",
+            projectDescription: "Homemade issue tracking for when enterprise software feels like overkill.",
+            users:
+            [
+                ("Avery Architect", "avery@joura.local", ProjectRole.Admin),
+                ("Priya PM", "priya@joura.local", ProjectRole.ProjectManager),
+                ("Devon Developer", "devon@joura.local", ProjectRole.Member)
+            ],
+            issueBlueprints:
+            [
+                ("JOU-1", "Define modular monolith boundaries", "Split the solution into domain, application, infrastructure, and web projects.", IssueType.Story, IssuePriority.High, "To Do", "Avery Architect", "Priya PM", new[] { "architecture" }),
+                ("JOU-2", "Wire PostgreSQL persistence", "Add EF Core, Npgsql, and the initial issue tracking schema.", IssueType.Task, IssuePriority.High, "In Progress", "Priya PM", "Devon Developer", new[] { "azure", "backend" }),
+                ("JOU-3", "Draft Azure target architecture", "Document App Service, PostgreSQL, Blob Storage, Key Vault, and Application Insights.", IssueType.Improvement, IssuePriority.Medium, "Done", "Avery Architect", "Devon Developer", new[] { "azure" })
+            ],
+            cancellationToken);
+
+        await SeedTenantAsync(
+            tenantKey: "NOVA",
+            tenantName: "Nova Works",
+            projectKey: "NOVA",
+            projectName: "Nova Customer Portal",
+            projectDescription: "Second tenant to validate isolation across authentication and data access.",
+            users:
+            [
+                ("Nina Nova", "nina@nova.local", ProjectRole.Admin),
+                ("Paul Product", "paul@nova.local", ProjectRole.ProjectManager),
+                ("Mika Maker", "mika@nova.local", ProjectRole.Member)
+            ],
+            issueBlueprints:
+            [
+                ("NOVA-1", "Create customer onboarding flow", "Build signup and onboarding screens for the portal.", IssueType.Story, IssuePriority.High, "To Do", "Nina Nova", "Paul Product", new[] { "frontend" }),
+                ("NOVA-2", "Implement account settings API", "Add backend endpoints for profile and preference updates.", IssueType.Task, IssuePriority.Medium, "In Progress", "Paul Product", "Mika Maker", new[] { "backend" }),
+                ("NOVA-3", "Enable audit export", "Support CSV export for tenant-level audit trail.", IssueType.Improvement, IssuePriority.Low, "Done", "Nina Nova", "Mika Maker", new[] { "architecture" })
+            ],
+            cancellationToken);
+    }
+
+    private async Task SeedTenantAsync(
+        string tenantKey,
+        string tenantName,
+        string projectKey,
+        string projectName,
+        string projectDescription,
+        IReadOnlyList<(string DisplayName, string Email, ProjectRole Role)> users,
+        IReadOnlyList<(string Key, string Title, string Description, IssueType Type, IssuePriority Priority, string StatusName, string ReporterName, string AssigneeName, IReadOnlyList<string> Labels)> issueBlueprints,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.Tenants.AnyAsync(x => x.Key == tenantKey, cancellationToken))
         {
             return;
         }
 
-        var tenant = new Tenant { Name = "Demo Company", Key = "DEMO" };
-
-        var admin = new AppUser { Tenant = tenant, DisplayName = "Avery Architect", Email = "avery@joura.local", Role = ProjectRole.Admin };
-        var pm = new AppUser { Tenant = tenant, DisplayName = "Priya PM", Email = "priya@joura.local", Role = ProjectRole.ProjectManager };
-        var developer = new AppUser { Tenant = tenant, DisplayName = "Devon Developer", Email = "devon@joura.local", Role = ProjectRole.Member };
+        var tenant = new Tenant { Name = tenantName, Key = tenantKey };
+        var tenantUsers = users
+            .Select(x => new AppUser { Tenant = tenant, DisplayName = x.DisplayName, Email = x.Email, Role = x.Role })
+            .ToList();
 
         var project = new Project
         {
             Tenant = tenant,
-            Name = "Joura Platform",
-            Key = "JOU",
-            Description = "Homemade issue tracking for when enterprise software feels like overkill."
+            Name = projectName,
+            Key = projectKey,
+            Description = projectDescription
         };
 
         var todo = new IssueStatus { Project = project, Name = "To Do", Category = IssueStatusCategory.ToDo, SortOrder = 1, IsDefault = true };
         var inProgress = new IssueStatus { Project = project, Name = "In Progress", Category = IssueStatusCategory.InProgress, SortOrder = 2 };
         var done = new IssueStatus { Project = project, Name = "Done", Category = IssueStatusCategory.Done, SortOrder = 3 };
-
-        var labels = new[]
+        var statusByName = new Dictionary<string, IssueStatus>(StringComparer.OrdinalIgnoreCase)
         {
-            new Label { Name = "architecture", Color = "#244b40" },
-            new Label { Name = "azure", Color = "#1f4566" },
-            new Label { Name = "backend", Color = "#6a3f22" }
+            ["To Do"] = todo,
+            ["In Progress"] = inProgress,
+            ["Done"] = done
         };
 
-        var issue1 = new Issue
+        var labels = new Dictionary<string, Label>(StringComparer.OrdinalIgnoreCase);
+        foreach (var labelName in issueBlueprints.SelectMany(x => x.Labels).Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            Project = project,
-            Status = todo,
-            Reporter = admin,
-            Assignee = pm,
-            Key = "JOU-1",
-            Title = "Define modular monolith boundaries",
-            Description = "Split the solution into domain, application, infrastructure, and web projects.",
-            Type = IssueType.Story,
-            Priority = IssuePriority.High
-        };
-        issue1.IssueLabels.Add(new IssueLabel { Issue = issue1, Label = labels[0] });
+            labels[labelName] = await GetOrCreateLabelAsync(labelName, cancellationToken);
+        }
 
-        var issue2 = new Issue
+        var userByName = tenantUsers.ToDictionary(x => x.DisplayName, StringComparer.OrdinalIgnoreCase);
+        var issues = new List<Issue>();
+        foreach (var blueprint in issueBlueprints)
         {
-            Project = project,
-            Status = inProgress,
-            Reporter = pm,
-            Assignee = developer,
-            Key = "JOU-2",
-            Title = "Wire PostgreSQL persistence",
-            Description = "Add EF Core, Npgsql, and the initial issue tracking schema.",
-            Type = IssueType.Task,
-            Priority = IssuePriority.High
-        };
-        issue2.IssueLabels.Add(new IssueLabel { Issue = issue2, Label = labels[1] });
-        issue2.IssueLabels.Add(new IssueLabel { Issue = issue2, Label = labels[2] });
+            var issue = new Issue
+            {
+                Project = project,
+                Status = statusByName[blueprint.StatusName],
+                Reporter = userByName[blueprint.ReporterName],
+                Assignee = userByName[blueprint.AssigneeName],
+                Key = blueprint.Key,
+                Title = blueprint.Title,
+                Description = blueprint.Description,
+                Type = blueprint.Type,
+                Priority = blueprint.Priority
+            };
 
-        var issue3 = new Issue
-        {
-            Project = project,
-            Status = done,
-            Reporter = admin,
-            Assignee = developer,
-            Key = "JOU-3",
-            Title = "Draft Azure target architecture",
-            Description = "Document App Service, PostgreSQL, Blob Storage, Key Vault, and Application Insights.",
-            Type = IssueType.Improvement,
-            Priority = IssuePriority.Medium
-        };
-        issue3.IssueLabels.Add(new IssueLabel { Issue = issue3, Label = labels[1] });
+            foreach (var labelName in blueprint.Labels)
+            {
+                issue.IssueLabels.Add(new IssueLabel { Issue = issue, Label = labels[labelName] });
+            }
 
-        dbContext.AddRange(tenant, admin, pm, developer, project, todo, inProgress, done);
-        dbContext.Labels.AddRange(labels);
-        dbContext.Issues.AddRange(issue1, issue2, issue3);
-        dbContext.Comments.AddRange(
-            new Comment { Issue = issue2, Author = developer, Body = "The DbContext is in place; migrations are next." },
-            new Comment { Issue = issue1, Author = pm, Body = "Keep search and notifications behind clear application contracts." });
-        dbContext.AuditEvents.AddRange(
-            new AuditEvent { Issue = issue1, Actor = admin, EventType = "IssueCreated", Description = "Created issue JOU-1." },
-            new AuditEvent { Issue = issue2, Actor = pm, EventType = "IssueCreated", Description = "Created issue JOU-2." },
-            new AuditEvent { Issue = issue2, Actor = developer, EventType = "StatusChanged", Description = "JOU-2 moved from To Do to In Progress." },
-            new AuditEvent { Issue = issue3, Actor = admin, EventType = "IssueCreated", Description = "Created issue JOU-3." });
-        dbContext.Notifications.AddRange(
-            new Notification { User = pm, Issue = issue1, Type = NotificationType.IssueAssigned, Message = "You were assigned to JOU-1." },
-            new Notification { User = developer, Issue = issue2, Type = NotificationType.IssueAssigned, Message = "You were assigned to JOU-2." });
+            issues.Add(issue);
+        }
 
+        dbContext.AddRange(tenant, project, todo, inProgress, done);
+        dbContext.Users.AddRange(tenantUsers);
+        dbContext.Issues.AddRange(issues);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
