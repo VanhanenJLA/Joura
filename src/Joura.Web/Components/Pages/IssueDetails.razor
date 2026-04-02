@@ -18,46 +18,107 @@ else
                 <h1>@issue.Title</h1>
             </div>
             <div class="tag-row">
-                <span class="pill">@issue.Type</span>
-                <span class="pill">@issue.Priority</span>
-                <span class="pill">@issue.StatusName</span>
+                @if (isEditing)
+                {
+                    <button type="button" class="action-button action-button-secondary" @onclick="CancelEdit">Cancel</button>
+                    <button type="button" class="action-button" disabled="@isSavingEdit" @onclick="SaveEditAsync">Save</button>
+                }
+                else
+                {
+                    <button type="button" class="action-button action-button-secondary" @onclick="BeginEdit">Edit</button>
+                }
             </div>
         </div>
 
-        <div class="detail-grid">
+        @if (isEditing)
+        {
             <div class="subpanel-card">
-                <h2>Description</h2>
-                <p class="body-copy">@issue.Description</p>
-                <div class="tag-row">
-                    @foreach (var label in issue.Labels)
-                    {
-                        <span class="colored-pill" style="--pill-color:@label.Color">@label.Name</span>
-                    }
+                <EditForm Model="editForm" OnValidSubmit="SaveEditAsync">
+                    <div class="form-grid">
+                        <label class="full-width">
+                            <span>Title</span>
+                            <InputText @bind-Value="editForm.Title" />
+                        </label>
+                        <label class="full-width">
+                            <span>Description</span>
+                            <InputTextArea @bind-Value="editForm.Description" />
+                        </label>
+                        <label>
+                            <span>Type</span>
+                            <InputSelect @bind-Value="editForm.Type">
+                                @foreach (var type in Enum.GetValues<IssueType>())
+                                {
+                                    <option value="@type">@type</option>
+                                }
+                            </InputSelect>
+                        </label>
+                        <label>
+                            <span>Priority</span>
+                            <InputSelect @bind-Value="editForm.Priority">
+                                @foreach (var priority in Enum.GetValues<IssuePriority>())
+                                {
+                                    <option value="@priority">@priority</option>
+                                }
+                            </InputSelect>
+                        </label>
+                        <label>
+                            <span>Assignee</span>
+                            <InputSelect @bind-Value="editForm.AssigneeId">
+                                <option value="">Unassigned</option>
+                                @foreach (var user in users)
+                                {
+                                    <option value="@user.Id">@user.DisplayName</option>
+                                }
+                            </InputSelect>
+                        </label>
+                        <label class="full-width">
+                            <span>Labels (comma separated)</span>
+                            <InputText @bind-Value="editForm.Labels" />
+                        </label>
+                    </div>
+                    <button type="submit" class="action-button" disabled="@isSavingEdit">Save changes</button>
+                </EditForm>
+            </div>
+        }
+        else
+        {
+            <div class="detail-grid">
+                <div class="subpanel-card">
+                    <h2>Description</h2>
+                    <p class="body-copy">@issue.Description</p>
+                    <div class="tag-row">
+                        @foreach (var label in issue.Labels)
+                        {
+                            <span class="colored-pill" style="--pill-color:@label.Color">@label.Name</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="subpanel-card">
+                    <h2>Context</h2>
+                    <dl class="meta-list">
+                        <div><dt>Project</dt><dd>@issue.ProjectName</dd></div>
+                        <div><dt>Type</dt><dd>@issue.Type</dd></div>
+                        <div><dt>Priority</dt><dd>@issue.Priority</dd></div>
+                        <div>
+                            <dt>Reporter</dt>
+                            <dd class="meta-person">
+                                <InitialismAvatar Name="@issue.ReporterName" />
+                                <span>@issue.ReporterName</span>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Assignee</dt>
+                            <dd class="meta-person">
+                                <InitialismAvatar Name="@issue.AssigneeName" />
+                                <span>@(issue.AssigneeName ?? "Unassigned")</span>
+                            </dd>
+                        </div>
+                        <div><dt>Status</dt><dd>@issue.StatusName</dd></div>
+                    </dl>
                 </div>
             </div>
-
-            <div class="subpanel-card">
-                <h2>Context</h2>
-                <dl class="meta-list">
-                    <div><dt>Project</dt><dd>@issue.ProjectName</dd></div>
-                    <div>
-                        <dt>Reporter</dt>
-                        <dd class="meta-person">
-                            <InitialismAvatar Name="@issue.ReporterName" />
-                            <span>@issue.ReporterName</span>
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Assignee</dt>
-                        <dd class="meta-person">
-                            <InitialismAvatar Name="@issue.AssigneeName" />
-                            <span>@(issue.AssigneeName ?? "Unassigned")</span>
-                        </dd>
-                    </div>
-                    <div><dt>Status</dt><dd>@issue.StatusName</dd></div>
-                </dl>
-            </div>
-        </div>
+        }
     </section>
 
     <section class="page-grid">
@@ -121,10 +182,15 @@ else
     private IssueDetailDto? issue;
     private readonly CommentForm commentForm = new();
     private Guid? currentUserId;
+    private List<UserReferenceDto> users = [];
+    private readonly EditIssueForm editForm = new();
+    private bool isEditing;
+    private bool isSavingEdit;
 
     protected override async Task OnInitializedAsync()
     {
         currentUserId = await ResolveCurrentUserIdAsync();
+        users = (await WorkTrackingService.GetUsersAsync()).ToList();
         await ReloadAsync();
     }
 
@@ -143,6 +209,58 @@ else
     private async Task ReloadAsync()
     {
         issue = await WorkTrackingService.GetIssueAsync(IssueId);
+        if (issue is null)
+        {
+            isEditing = false;
+        }
+    }
+
+    private void BeginEdit()
+    {
+        if (issue is null)
+        {
+            return;
+        }
+
+        editForm.Title = issue.Title;
+        editForm.Description = issue.Description;
+        editForm.Type = issue.Type;
+        editForm.Priority = issue.Priority;
+        editForm.AssigneeId = users.FirstOrDefault(x => x.DisplayName == issue.AssigneeName)?.Id;
+        editForm.Labels = string.Join(", ", issue.Labels.Select(x => x.Name));
+        isEditing = true;
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (issue is null || isSavingEdit || string.IsNullOrWhiteSpace(editForm.Title))
+        {
+            return;
+        }
+
+        try
+        {
+            isSavingEdit = true;
+            await WorkTrackingService.UpdateIssueAsync(new UpdateIssueCommand(
+                issue.Id,
+                editForm.Title,
+                editForm.Description ?? string.Empty,
+                editForm.Type,
+                editForm.Priority,
+                editForm.AssigneeId,
+                SplitLabels(editForm.Labels)));
+            isEditing = false;
+            await ReloadAsync();
+        }
+        finally
+        {
+            isSavingEdit = false;
+        }
     }
 
     private sealed class CommentForm
@@ -150,10 +268,27 @@ else
         public string Body { get; set; } = string.Empty;
     }
 
+    private sealed class EditIssueForm
+    {
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public IssueType Type { get; set; } = IssueType.Task;
+        public IssuePriority Priority { get; set; } = IssuePriority.Medium;
+        public Guid? AssigneeId { get; set; }
+        public string? Labels { get; set; }
+    }
+
     private async Task<Guid?> ResolveCurrentUserIdAsync()
     {
         var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var userIdClaim = authenticationState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+    }
+
+    private static IReadOnlyList<string> SplitLabels(string? labels)
+    {
+        return string.IsNullOrWhiteSpace(labels)
+            ? []
+            : labels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 }

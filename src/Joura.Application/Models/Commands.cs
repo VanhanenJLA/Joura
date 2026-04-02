@@ -18,6 +18,7 @@ public sealed record UpdateIssueCommand(
     Guid IssueId,
     string Title,
     string Description,
+    IssueType Type,
     IssuePriority Priority,
     Guid? AssigneeId,
     IReadOnlyList<string> Labels);

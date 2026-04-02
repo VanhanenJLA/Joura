@@ -298,6 +298,7 @@ public sealed class WorkTrackingService(
 
         issue.Title = command.Title.Trim();
         issue.Description = command.Description.Trim();
+        issue.Type = command.Type;
         issue.Priority = command.Priority;
         issue.AssigneeId = assigneeId;
         issue.UpdatedUtc = DateTimeOffset.UtcNow;
@@ -315,7 +316,7 @@ public sealed class WorkTrackingService(
             IssueId = issue.Id,
             ActorId = actorId,
             EventType = "IssueUpdated",
-            Description = $"Updated title, description, assignee, priority, or labels on {issue.Key}."
+            Description = $"Updated title, description, type, assignee, priority, or labels on {issue.Key}."
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
