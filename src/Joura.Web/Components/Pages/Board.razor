@@ -330,10 +330,10 @@ else
 
     private static string GetPriorityEmoji(IssuePriority priority) => priority switch
     {
-        IssuePriority.High => "🔴",
-        IssuePriority.Medium => "🟡",
-        IssuePriority.Low => "🟢",
-        _ => "⚪"
+        IssuePriority.High => "⬆️",
+        IssuePriority.Medium => "➡️",
+        IssuePriority.Low => "⬇️",
+        _ => "➡️"
     };
 
     private sealed class CreateIssueForm

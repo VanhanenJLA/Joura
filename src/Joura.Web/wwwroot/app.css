@@ -355,32 +355,102 @@ section + section {
     min-width: 920px;
     border-collapse: separate;
     border-spacing: 0;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.58);
 }
 
 .issues-grid-scroll {
     width: 100%;
     overflow-x: auto;
+    border-radius: 1rem;
 }
 
 .issues-grid-table thead th {
-    padding: 0.65rem 0.55rem;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 0.7rem 0.65rem;
     border-bottom: 1px solid var(--border);
-    color: var(--muted);
+    background: rgba(244, 239, 229, 0.9);
+    color: #4f615b;
     text-align: left;
-    font-size: 0.8rem;
+    font-size: 0.76rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 
 .issues-grid-table tbody td {
-    padding: 0.8rem 0.55rem;
+    padding: 0.85rem 0.65rem;
     border-bottom: 1px solid var(--border);
-    vertical-align: top;
+    vertical-align: middle;
+}
+
+.issues-grid-table tbody tr:nth-child(even) td {
+    background: rgba(255, 255, 255, 0.36);
+}
+
+.issues-grid-table tbody tr:hover td {
+    background: rgba(244, 239, 229, 0.72);
 }
 
 .issues-grid-table tbody tr:last-child td {
     border-bottom: none;
 }
+
+.status-pill,
+.priority-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.22rem 0.62rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-pill-todo {
+    background: rgba(102, 117, 109, 0.16);
+    color: #4f615b;
+}
+
+.status-pill-progress {
+    background: rgba(216, 143, 61, 0.2);
+    color: #9d5a25;
+}
+
+.status-pill-done {
+    background: rgba(36, 75, 64, 0.16);
+    color: #244b40;
+}
+
+.status-pill-default {
+    background: rgba(102, 117, 109, 0.16);
+    color: #4f615b;
+}
+
+.priority-pill-low {
+    background: rgba(36, 75, 64, 0.16);
+    color: #244b40;
+}
+
+.priority-pill-medium {
+    background: rgba(216, 143, 61, 0.2);
+    color: #9d5a25;
+}
+
+.priority-pill-high {
+    background: rgba(181, 61, 50, 0.2);
+    color: #8b2e26;
+}
+
+.priority-pill-default {
+    background: rgba(102, 117, 109, 0.16);
+    color: #4f615b;
+}
+
 
 .issue-row p,
 .issue-card h3,

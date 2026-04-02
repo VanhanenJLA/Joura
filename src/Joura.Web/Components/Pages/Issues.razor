@@ -93,21 +93,41 @@ else
                                @onchange="args => ToggleIssueSelection(issue.Id, args)" />
                     </ChildContent>
                 </TemplateColumn>
-                <PropertyColumn Property="x => x.Key" Title="Key" Sortable="true" />
-                <PropertyColumn Property="x => x.Title" Title="Title" Sortable="true" />
-                <PropertyColumn Property="x => x.ProjectKey" Title="Project" Sortable="true" />
-                <PropertyColumn Property="x => x.StatusName" Title="Status" Sortable="true" />
-                <PropertyColumn Property="x => x.Priority" Title="Priority" Sortable="true" />
-                <TemplateColumn Title="Assignee">
+                <TemplateColumn Title="Key" SortBy="SortByKey">
+                    <span class="issue-grid-key">@context.Key</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Title" SortBy="SortByTitle">
+                    <a class="text-link" href="/issues/@context.Id">@context.Title</a>
+                </TemplateColumn>
+                <TemplateColumn Title="Project" SortBy="SortByProject">
+                    <span>@context.ProjectKey</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Status" SortBy="SortByStatus">
+                    <span class="status-pill @GetStatusPillClass(context.StatusCategory)">@context.StatusName</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Priority" SortBy="SortByPriority">
+                    <span class="priority-pill @GetPriorityPillClass(context.Priority)">@context.Priority</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Assignee" SortBy="SortByAssignee">
                     <InitialismAvatar Name="@context.AssigneeName" />
                 </TemplateColumn>
-                <PropertyColumn Property="x => x.UpdatedUtc" Title="Updated" Sortable="true" />
+                <TemplateColumn Title="Updated" SortBy="SortByUpdated">
+                    @context.UpdatedUtc.ToLocalTime().ToString("dd MMM HH:mm")
+                </TemplateColumn>
             </QuickGrid>
         </div>
     </section>
 }
 
 @code {
+    private static readonly GridSort<IssueSummaryDto> SortByKey = GridSort<IssueSummaryDto>.ByAscending(x => x.Key);
+    private static readonly GridSort<IssueSummaryDto> SortByTitle = GridSort<IssueSummaryDto>.ByAscending(x => x.Title);
+    private static readonly GridSort<IssueSummaryDto> SortByProject = GridSort<IssueSummaryDto>.ByAscending(x => x.ProjectKey);
+    private static readonly GridSort<IssueSummaryDto> SortByStatus = GridSort<IssueSummaryDto>.ByAscending(x => x.StatusName);
+    private static readonly GridSort<IssueSummaryDto> SortByPriority = GridSort<IssueSummaryDto>.ByAscending(x => x.Priority);
+    private static readonly GridSort<IssueSummaryDto> SortByAssignee = GridSort<IssueSummaryDto>.ByAscending(x => x.AssigneeName ?? string.Empty);
+    private static readonly GridSort<IssueSummaryDto> SortByUpdated = GridSort<IssueSummaryDto>.ByAscending(x => x.UpdatedUtc);
+
     private readonly IssueFilterState filter = new();
     private List<ProjectReferenceDto> projects = [];
     private List<UserReferenceDto> users = [];
@@ -165,6 +185,22 @@ else
             selectedIssueIds.Remove(issueId);
         }
     }
+
+    private static string GetStatusPillClass(IssueStatusCategory category) => category switch
+    {
+        IssueStatusCategory.ToDo => "status-pill-todo",
+        IssueStatusCategory.InProgress => "status-pill-progress",
+        IssueStatusCategory.Done => "status-pill-done",
+        _ => "status-pill-default"
+    };
+
+    private static string GetPriorityPillClass(IssuePriority priority) => priority switch
+    {
+        IssuePriority.Low => "priority-pill-low",
+        IssuePriority.Medium => "priority-pill-medium",
+        IssuePriority.High => "priority-pill-high",
+        _ => "priority-pill-default"
+    };
 
     private sealed class IssueFilterState
     {

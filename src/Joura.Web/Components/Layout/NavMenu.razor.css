@@ -106,6 +106,14 @@
     gap: 0.55rem;
 }
 
+.nav-user-display ::deep .initialism-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-color: rgba(244, 239, 229, 0.42);
+    background: rgba(244, 239, 229, 0.9);
+    color: #132522;
+}
+
 .nav-scrollable {
     display: none;
 }
