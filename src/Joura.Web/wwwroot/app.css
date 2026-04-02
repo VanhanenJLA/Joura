@@ -375,6 +375,7 @@ section + section {
 .board-column {
     border-radius: 1.25rem;
     padding: 1rem;
+    min-height: 28rem;
     transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
 }
 
