@@ -18,15 +18,18 @@ else
                 <p class="panel-kicker">Board</p>
                 <h1>Kanban overview</h1>
             </div>
-            <label class="compact-field">
-                <span>Project</span>
-                <InputSelect @bind-Value="selectedProjectId" @bind-Value:after="LoadBoardAsync">
-                    @foreach (var project in projects)
-                    {
-                        <option value="@project.Id">@project.Key - @project.Name</option>
-                    }
-                </InputSelect>
-            </label>
+            <div class="board-toolbar">
+                <label class="compact-field">
+                    <span>Project</span>
+                    <InputSelect @bind-Value="selectedProjectId" @bind-Value:after="LoadBoardAsync">
+                        @foreach (var project in projects)
+                        {
+                            <option value="@project.Id">@project.Key - @project.Name</option>
+                        }
+                    </InputSelect>
+                </label>
+                <button type="button" class="action-button" @onclick="OpenCreateIssueModal">Create issue</button>
+            </div>
         </div>
     </section>
 
@@ -67,21 +70,98 @@ else
     </section>
 }
 
+@if (showCreateIssueModal)
+{
+    <div class="modal-backdrop" @onclick="CloseCreateIssueModal">
+        <section class="modal-panel panel-card" @onclick:stopPropagation="true">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Board</p>
+                    <h2>Create issue</h2>
+                </div>
+            </div>
+
+            <EditForm Model="createIssueForm" OnValidSubmit="CreateIssueAsync">
+                <div class="form-grid">
+                    <label class="full-width">
+                        <span>Title</span>
+                        <InputText @bind-Value="createIssueForm.Title" />
+                    </label>
+                    <label class="full-width">
+                        <span>Description</span>
+                        <InputTextArea @bind-Value="createIssueForm.Description" />
+                    </label>
+                    <label>
+                        <span>Type</span>
+                        <InputSelect @bind-Value="createIssueForm.Type">
+                            @foreach (var type in Enum.GetValues<IssueType>())
+                            {
+                                <option value="@type">@type</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label>
+                        <span>Priority</span>
+                        <InputSelect @bind-Value="createIssueForm.Priority">
+                            @foreach (var priority in Enum.GetValues<IssuePriority>())
+                            {
+                                <option value="@priority">@priority</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label>
+                        <span>Assignee</span>
+                        <InputSelect @bind-Value="createIssueForm.AssigneeId">
+                            <option value="">Unassigned</option>
+                            @foreach (var user in users)
+                            {
+                                <option value="@user.Id">@user.DisplayName</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label>
+                        <span>Project</span>
+                        <InputSelect @bind-Value="createIssueForm.ProjectId">
+                            @foreach (var project in projects)
+                            {
+                                <option value="@project.Id">@project.Key - @project.Name</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label class="full-width">
+                        <span>Labels (comma separated)</span>
+                        <InputText @bind-Value="createIssueForm.Labels" />
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="action-button" disabled="@isCreatingIssue">Create</button>
+                    <button type="button" class="action-button action-button-secondary" @onclick="CloseCreateIssueModal">Cancel</button>
+                </div>
+            </EditForm>
+        </section>
+    </div>
+}
+
 @code {
     private List<ProjectReferenceDto> projects = [];
     private List<KanbanColumnDto> columns = [];
-    private List<StatusReferenceDto> statuses = [];
+    private List<UserReferenceDto> users = [];
     private Guid selectedProjectId;
     private Guid? currentUserId;
     private Guid? draggingIssueId;
     private Guid? draggingFromStatusId;
     private Guid? dropTargetStatusId;
     private bool isMovingIssue;
+    private bool isCreatingIssue;
+    private bool showCreateIssueModal;
+    private readonly CreateIssueForm createIssueForm = new();
 
     protected override async Task OnInitializedAsync()
     {
         currentUserId = await ResolveCurrentUserIdAsync();
         projects = (await WorkTrackingService.GetProjectsAsync()).ToList();
+        users = (await WorkTrackingService.GetUsersAsync()).ToList();
 
         if (projects.Count == 0)
         {
@@ -105,8 +185,54 @@ else
             return;
         }
 
-        statuses = (await WorkTrackingService.GetStatusesAsync(selectedProjectId)).ToList();
         columns = (await WorkTrackingService.GetBoardAsync(selectedProjectId)).ToList();
+    }
+
+    private void OpenCreateIssueModal()
+    {
+        createIssueForm.ProjectId = selectedProjectId;
+        showCreateIssueModal = true;
+    }
+
+    private void CloseCreateIssueModal()
+    {
+        showCreateIssueModal = false;
+    }
+
+    private async Task CreateIssueAsync()
+    {
+        if (!currentUserId.HasValue || createIssueForm.ProjectId == Guid.Empty || string.IsNullOrWhiteSpace(createIssueForm.Title) || isCreatingIssue)
+        {
+            return;
+        }
+
+        try
+        {
+            isCreatingIssue = true;
+            await WorkTrackingService.CreateIssueAsync(new CreateIssueCommand(
+                createIssueForm.ProjectId,
+                createIssueForm.Title,
+                createIssueForm.Description ?? string.Empty,
+                createIssueForm.Type,
+                createIssueForm.Priority,
+                currentUserId.Value,
+                createIssueForm.AssigneeId,
+                SplitLabels(createIssueForm.Labels)));
+
+            createIssueForm.Title = string.Empty;
+            createIssueForm.Description = string.Empty;
+            createIssueForm.Labels = string.Empty;
+            createIssueForm.AssigneeId = null;
+            createIssueForm.Type = IssueType.Task;
+            createIssueForm.Priority = IssuePriority.Medium;
+            showCreateIssueModal = false;
+            selectedProjectId = createIssueForm.ProjectId;
+            await LoadBoardAsync();
+        }
+        finally
+        {
+            isCreatingIssue = false;
+        }
     }
 
     private async Task MoveIssueAsync(Guid issueId, Guid statusId)
@@ -182,5 +308,23 @@ else
         var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var userIdClaim = authenticationState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+    }
+
+    private static IReadOnlyList<string> SplitLabels(string? labels)
+    {
+        return string.IsNullOrWhiteSpace(labels)
+            ? []
+            : labels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private sealed class CreateIssueForm
+    {
+        public Guid ProjectId { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public IssueType Type { get; set; } = IssueType.Task;
+        public IssuePriority Priority { get; set; } = IssuePriority.Medium;
+        public Guid? AssigneeId { get; set; }
+        public string? Labels { get; set; }
     }
 }

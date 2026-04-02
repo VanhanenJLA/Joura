@@ -260,6 +260,17 @@ section + section {
     margin-bottom: 1rem;
 }
 
+.filters-inline {
+    display: grid;
+    grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(140px, 1fr));
+    gap: 0.75rem;
+    align-items: end;
+}
+
+.filters-inline-search {
+    grid-column: auto;
+}
+
 .form-grid label,
 .compact-field {
     display: grid;
@@ -372,11 +383,45 @@ section + section {
     gap: 1rem;
 }
 
+.board-toolbar {
+    display: flex;
+    align-items: end;
+    gap: 0.75rem;
+}
+
 .board-column {
     border-radius: 1.25rem;
     padding: 1rem;
     min-height: 28rem;
     transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(27, 38, 37, 0.46);
+}
+
+.modal-panel {
+    width: min(680px, 100%);
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.action-button-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--accent);
 }
 
 .board-column-active {
@@ -470,7 +515,8 @@ section + section {
     }
 
     .hero-stats,
-    .form-grid {
+    .form-grid,
+    .filters-inline {
         grid-template-columns: 1fr;
     }
 }
@@ -485,5 +531,11 @@ section + section {
 
     .content {
         padding: 1rem;
+    }
+
+    .board-toolbar {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
     }
 }
