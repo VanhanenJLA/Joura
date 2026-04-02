@@ -18,30 +18,43 @@
         <p class="empty-state">Could not sign in. Please choose a valid user.</p>
     }
 
-    @if (users.Count == 0)
+    @if (tenants.Count == 0)
     {
-        <p class="empty-state">No users available.</p>
+        <p class="empty-state">No tenants or users available.</p>
     }
     else
     {
-        <div class="issue-list">
-            @foreach (var user in users)
+        <div class="page-grid">
+            @foreach (var tenant in tenants)
             {
-                <form method="post" action="/auth/login" class="issue-card">
-                    <input type="hidden" name="email" value="@user.Email" />
-                    <input type="hidden" name="returnUrl" value="@returnUrl" />
-                    <div class="issue-card-main">
+                <section class="subpanel-card">
+                    <div class="panel-header">
                         <div>
-                            <span class="issue-key">@user.Role</span>
-                            <h3>@user.DisplayName</h3>
+                            <p class="panel-kicker">Tenant</p>
+                            <h2>@tenant.Name</h2>
                         </div>
                     </div>
-                    <div class="issue-card-meta">
-                        <span>@user.TenantName</span>
-                        <span>@user.Email</span>
+
+                    <div class="issue-list">
+                        @foreach (var user in tenant.Users)
+                        {
+                            <form method="post" action="/auth/login" class="issue-card">
+                                <input type="hidden" name="email" value="@user.Email" />
+                                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                <div class="issue-card-main">
+                                    <div>
+                                        <span class="issue-key">@user.Role</span>
+                                        <h3>@user.DisplayName</h3>
+                                    </div>
+                                </div>
+                                <div class="issue-card-meta">
+                                    <span>@user.Email</span>
+                                </div>
+                                <button type="submit" class="action-button">Continue as @user.DisplayName</button>
+                            </form>
+                        }
                     </div>
-                    <button type="submit" class="action-button">Continue as @user.DisplayName</button>
-                </form>
+                </section>
             }
         </div>
     }
@@ -50,17 +63,23 @@
 @code {
     private string returnUrl = "/";
     private bool showError;
-    private List<LoginUserView> users = [];
+    private List<LoginTenantView> tenants = [];
 
     protected override async Task OnInitializedAsync()
     {
-        users = await DbContext.Users
+        var users = await DbContext.Users
             .AsNoTracking()
             .Include(x => x.Tenant)
             .OrderBy(x => x.Tenant.Name)
             .ThenBy(x => x.DisplayName)
             .Select(x => new LoginUserView(x.DisplayName, x.Email, x.Role.ToString(), x.Tenant.Name))
             .ToListAsync();
+
+        tenants = users
+            .GroupBy(x => x.TenantName)
+            .Select(x => new LoginTenantView(x.Key, x.Select(user => new LoginUserItemView(user.DisplayName, user.Email, user.Role)).ToList()))
+            .OrderBy(x => x.Name)
+            .ToList();
 
         var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
@@ -73,4 +92,6 @@
     }
 
     private sealed record LoginUserView(string DisplayName, string Email, string Role, string TenantName);
+    private sealed record LoginUserItemView(string DisplayName, string Email, string Role);
+    private sealed record LoginTenantView(string Name, IReadOnlyList<LoginUserItemView> Users);
 }
