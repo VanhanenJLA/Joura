@@ -16,5 +16,10 @@ public interface IWorkTrackingService
     Task UpdateIssueAsync(UpdateIssueCommand command, CancellationToken cancellationToken = default);
     Task MoveIssueAsync(MoveIssueCommand command, CancellationToken cancellationToken = default);
     Task AddCommentAsync(AddCommentCommand command, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<WorklogEntryDto>> GetIssueWorklogAsync(Guid issueId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<WorklogEntryDto>> GetWorklogEntriesAsync(WorklogFilter filter, CancellationToken cancellationToken = default);
+    Task<Guid> AddWorklogAsync(AddWorklogCommand command, CancellationToken cancellationToken = default);
+    Task UpdateWorklogAsync(UpdateWorklogCommand command, CancellationToken cancellationToken = default);
+    Task DeleteWorklogAsync(Guid worklogEntryId, CancellationToken cancellationToken = default);
     Task SeedSampleDataAsync(CancellationToken cancellationToken = default);
 }

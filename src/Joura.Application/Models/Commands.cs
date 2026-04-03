@@ -28,3 +28,7 @@ public sealed record UpdateIssueCommand(
 public sealed record MoveIssueCommand(Guid IssueId, Guid TargetStatusId, Guid ActorId);
 
 public sealed record AddCommentCommand(Guid IssueId, Guid AuthorId, string Body);
+
+public sealed record AddWorklogCommand(Guid IssueId, DateTime StartAt, DateTime EndAt, string? Note);
+
+public sealed record UpdateWorklogCommand(Guid WorklogEntryId, DateTime StartAt, DateTime EndAt, string? Note);

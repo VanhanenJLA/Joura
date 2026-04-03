@@ -1,0 +1,495 @@
+@page "/worklog"
+@rendermode InteractiveServer
+@inject IWorkTrackingService WorkTrackingService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using System.Globalization
+
+<PageTitle>Worklog</PageTitle>
+
+<section class="panel-card calendar-shell">
+    <div class="calendar-header">
+        <div>
+            <p class="panel-kicker">Planning</p>
+            <h1>Worklog</h1>
+        </div>
+        <div class="calendar-controls">
+            <button type="button" class="action-button action-button-secondary" @onclick="PreviousWeek">Previous</button>
+            <strong>@WeekTitle</strong>
+            <button type="button" class="action-button action-button-secondary" @onclick="NextWeek">Next</button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <p class="empty-state">Loading worklog...</p>
+    }
+    else
+    {
+        <p class="selection-summary worklog-input-caption">Input view shows your own worklog entries.</p>
+        <section class="calendar-planner">
+            <div class="calendar-planner-surface" @onmouseup="HandlePlannerPointerUp" @onmouseleave="CancelPlannerPointerInteraction">
+                <div class="calendar-planner-grid-outlook">
+                    <div class="calendar-planner-corner"></div>
+                    @foreach (var day in visibleDays)
+                    {
+                        var dayTotal = worklogByDate.TryGetValue(day, out var dayEntries) ? dayEntries.Sum(x => x.Minutes) : 0;
+                        <div class="calendar-planner-day-header">
+                            <strong>@day.ToDateTime(TimeOnly.MinValue).ToString("ddd d MMM")</strong>
+                            <span>@(dayTotal == 0 ? "No logs" : FormatDuration(dayTotal))</span>
+                        </div>
+                    }
+
+                    <div class="calendar-planner-hours">
+                        @foreach (var hour in plannerHours)
+                        {
+                            <div class="calendar-planner-hour">@FormatHourLabel(hour)</div>
+                        }
+                    </div>
+
+                    @foreach (var day in visibleDays)
+                    {
+                        var dayEntries = worklogByDate.GetValueOrDefault(day) ?? [];
+                        <div class="calendar-planner-day-column">
+                            @foreach (var slotStart in GetPlannerSlots(day))
+                            {
+                                var isSelected = IsSlotSelected(slotStart);
+                                <button type="button"
+                                        class="calendar-planner-slot @(isSelected ? "calendar-planner-slot-selected" : string.Empty)"
+                                        style="@GetPlannerSlotStyle(slotStart)"
+                                        @onmousedown="() => BeginWorklogRangeSelection(slotStart)"
+                                        @onmouseenter="() => UpdateWorklogRangeSelection(slotStart)"
+                                        @onmousedown:preventDefault="true">
+                                </button>
+                            }
+
+                            @foreach (var entry in dayEntries)
+                            {
+                                <button type="button"
+                                        class="calendar-planner-entry @(IsReschedulingEntry(entry) ? "calendar-planner-entry-dragging" : string.Empty)"
+                                        style="@GetPlannerEntryStyle(entry)"
+                                        @onmousedown="() => BeginWorklogReschedule(entry)"
+                                        @onmousedown:preventDefault="true">
+                                    <strong>@entry.IssueKey</strong>
+                                    <span>@entry.StartAt.ToString("HH:mm") - @entry.EndAt.ToString("HH:mm")</span>
+                                    <span>@FormatDuration(entry.Minutes)</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <aside class="calendar-planner-editor">
+                <div class="panel-header">
+                    <div>
+                        <p class="panel-kicker">Quick Log</p>
+                        <h2>@worklogForm.StartAt.ToString("dddd d MMMM")</h2>
+                    </div>
+                    <span class="selection-summary">@worklogForm.StartAt.ToString("HH:mm") - @worklogForm.EndAt.ToString("HH:mm")</span>
+                </div>
+
+                <EditForm Model="worklogForm" OnValidSubmit="AddWorklogAsync">
+                    <div class="form-grid">
+                        <label class="full-width">
+                            <span>Issue</span>
+                            <InputSelect @bind-Value="worklogForm.IssueId">
+                                <option value="">Select issue</option>
+                                @foreach (var issue in filteredIssues)
+                                {
+                                    <option value="@issue.Id">@issue.Key - @issue.Title</option>
+                                }
+                            </InputSelect>
+                        </label>
+                        <label class="full-width">
+                            <span>Find issue</span>
+                            <InputText @bind-Value="issueSearchText" />
+                        </label>
+                        <label>
+                            <span>Start</span>
+                            <InputDate @bind-Value="worklogForm.StartAt" Type="InputDateType.DateTimeLocal" />
+                        </label>
+                        <label>
+                            <span>End</span>
+                            <InputDate @bind-Value="worklogForm.EndAt" Type="InputDateType.DateTimeLocal" />
+                        </label>
+                        <label class="full-width">
+                            <span>Note</span>
+                            <InputText @bind-Value="worklogForm.Note" />
+                        </label>
+                    </div>
+                    <div class="worklog-issue-browser">
+                        @if (VisibleIssues.Count == 0)
+                        {
+                            <p class="empty-state">No matching issues.</p>
+                        }
+                        else
+                        {
+                            @foreach (var issue in VisibleIssues)
+                            {
+                                <button type="button"
+                                        class="worklog-issue-option @(worklogForm.IssueId == issue.Id ? "worklog-issue-option-selected" : string.Empty)"
+                                        @onclick="() => SelectIssue(issue.Id)">
+                                    <strong>@issue.Key</strong>
+                                    <span>@issue.Title</span>
+                                </button>
+                            }
+                        }
+                    </div>
+                    <button type="submit" class="action-button" disabled="@isAddingWorklog">Log time</button>
+                </EditForm>
+            </aside>
+        </section>
+    }
+</section>
+
+@code {
+    private readonly Dictionary<DateOnly, List<WorklogEntryDto>> worklogByDate = new();
+    private readonly List<DateOnly> visibleDays = [];
+    private readonly List<IssueSummaryDto> filteredIssues = [];
+    private readonly WorklogPlannerForm worklogForm = new();
+    private readonly int[] plannerHours = Enumerable.Range(6, 15).ToArray();
+    private List<ProjectReferenceDto> projects = [];
+    private Guid? currentUserId;
+    private DateOnly currentDate = DateOnly.FromDateTime(DateTime.Today);
+    private string issueSearchText = string.Empty;
+    private DayOfWeek firstDayOfWeek = DayOfWeek.Monday;
+    private bool isLoading;
+    private bool isAddingWorklog;
+    private bool isSelectingWorklogRange;
+    private DateTime? rangeSelectionAnchor;
+    private bool isReschedulingWorklog;
+    private WorklogEntryDto? draggedWorklogEntry;
+    private DateTime? draggedWorklogPreviewStart;
+    private const int PlannerStartHour = 6;
+    private const int PlannerEndHour = 21;
+    private const int PlannerSlotMinutes = 30;
+    private const double PlannerHourHeightRem = 5.0;
+
+    private string WeekTitle => $"{GetStartOfWeek(currentDate).ToDateTime(TimeOnly.MinValue):d MMM} - {GetStartOfWeek(currentDate).AddDays(6).ToDateTime(TimeOnly.MinValue):d MMM yyyy}";
+    private List<IssueSummaryDto> VisibleIssues => filteredIssues
+        .Where(issue => string.IsNullOrWhiteSpace(issueSearchText)
+            || issue.Key.Contains(issueSearchText, StringComparison.OrdinalIgnoreCase)
+            || issue.Title.Contains(issueSearchText, StringComparison.OrdinalIgnoreCase))
+        .Take(12)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUserId = await ResolveCurrentUserIdAsync();
+        projects = (await WorkTrackingService.GetProjectsAsync()).ToList();
+        worklogForm.StartAt = AlignToPlannerSlot(DateTime.Today.AddHours(9));
+        worklogForm.EndAt = worklogForm.StartAt.AddHours(1);
+        BuildVisibleDays();
+        await ReloadCalendarAsync();
+    }
+
+    private async Task ReloadCalendarAsync()
+    {
+        isLoading = true;
+        try
+        {
+            worklogByDate.Clear();
+            filteredIssues.Clear();
+
+            filteredIssues.AddRange((await WorkTrackingService.SearchIssuesAsync(
+                    new IssueFilter(null, null, currentUserId, null, null)))
+                .OrderBy(x => x.Key, StringComparer.Ordinal));
+            SyncWorklogIssueSelection();
+
+            if (!currentUserId.HasValue)
+            {
+                return;
+            }
+
+            var entries = await WorkTrackingService.GetWorklogEntriesAsync(new WorklogFilter(null, currentUserId, null));
+            foreach (var entry in entries.Where(x => x.UserId == currentUserId.Value))
+            {
+                if (!worklogByDate.TryGetValue(entry.LoggedDate, out var dayEntries))
+                {
+                    dayEntries = [];
+                    worklogByDate[entry.LoggedDate] = dayEntries;
+                }
+
+                dayEntries.Add(entry);
+            }
+
+            foreach (var dayEntries in worklogByDate.Values)
+            {
+                dayEntries.Sort((left, right) => left.StartAt.CompareTo(right.StartAt));
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void PreviousWeek()
+    {
+        currentDate = currentDate.AddDays(-7);
+        BuildVisibleDays();
+        SyncSelectedWorklogSlot();
+    }
+
+    private void NextWeek()
+    {
+        currentDate = currentDate.AddDays(7);
+        BuildVisibleDays();
+        SyncSelectedWorklogSlot();
+    }
+
+    private void BuildVisibleDays()
+    {
+        visibleDays.Clear();
+        var start = GetStartOfWeek(currentDate);
+        for (var index = 0; index < 7; index++)
+        {
+            visibleDays.Add(start.AddDays(index));
+        }
+    }
+
+    private DateOnly GetStartOfWeek(DateOnly day)
+    {
+        while (day.DayOfWeek != firstDayOfWeek)
+        {
+            day = day.AddDays(-1);
+        }
+
+        return day;
+    }
+
+    private void BeginWorklogRangeSelection(DateTime slotStart)
+    {
+        isSelectingWorklogRange = true;
+        rangeSelectionAnchor = slotStart;
+        ApplySelectedRange(slotStart, slotStart);
+    }
+
+    private void UpdateWorklogRangeSelection(DateTime slotStart)
+    {
+        if (isReschedulingWorklog)
+        {
+            UpdateWorklogReschedule(slotStart);
+            return;
+        }
+
+        if (!isSelectingWorklogRange || !rangeSelectionAnchor.HasValue)
+        {
+            return;
+        }
+
+        ApplySelectedRange(rangeSelectionAnchor.Value, slotStart);
+    }
+
+    private void EndWorklogRangeSelection()
+    {
+        isSelectingWorklogRange = false;
+        rangeSelectionAnchor = null;
+    }
+
+    private void BeginWorklogReschedule(WorklogEntryDto entry)
+    {
+        isReschedulingWorklog = true;
+        draggedWorklogEntry = entry;
+        draggedWorklogPreviewStart = entry.StartAt;
+        worklogForm.IssueId = entry.IssueId;
+        worklogForm.StartAt = entry.StartAt;
+        worklogForm.EndAt = entry.EndAt;
+        worklogForm.Note = entry.Note;
+    }
+
+    private void UpdateWorklogReschedule(DateTime slotStart)
+    {
+        if (!isReschedulingWorklog || draggedWorklogEntry is null)
+        {
+            return;
+        }
+
+        draggedWorklogPreviewStart = slotStart;
+        worklogForm.IssueId = draggedWorklogEntry.IssueId;
+        worklogForm.StartAt = slotStart;
+        worklogForm.EndAt = slotStart.AddMinutes(draggedWorklogEntry.Minutes);
+        worklogForm.Note = draggedWorklogEntry.Note;
+    }
+
+    private async Task HandlePlannerPointerUp()
+    {
+        EndWorklogRangeSelection();
+
+        if (!isReschedulingWorklog || draggedWorklogEntry is null || !draggedWorklogPreviewStart.HasValue)
+        {
+            return;
+        }
+
+        var previewStart = draggedWorklogPreviewStart.Value;
+        var previewEnd = previewStart.AddMinutes(draggedWorklogEntry.Minutes);
+        var needsUpdate = previewStart != draggedWorklogEntry.StartAt || previewEnd != draggedWorklogEntry.EndAt;
+
+        isReschedulingWorklog = false;
+        var entry = draggedWorklogEntry;
+        draggedWorklogEntry = null;
+        draggedWorklogPreviewStart = null;
+
+        if (!needsUpdate)
+        {
+            return;
+        }
+
+        await WorkTrackingService.UpdateWorklogAsync(new UpdateWorklogCommand(
+            entry.Id,
+            previewStart,
+            previewEnd,
+            entry.Note));
+        await ReloadCalendarAsync();
+    }
+
+    private void CancelPlannerPointerInteraction()
+    {
+        EndWorklogRangeSelection();
+        isReschedulingWorklog = false;
+        draggedWorklogEntry = null;
+        draggedWorklogPreviewStart = null;
+    }
+
+    private void ApplySelectedRange(DateTime firstSlot, DateTime secondSlot)
+    {
+        var start = firstSlot <= secondSlot ? firstSlot : secondSlot;
+        var end = firstSlot <= secondSlot ? secondSlot.AddMinutes(PlannerSlotMinutes) : firstSlot.AddMinutes(PlannerSlotMinutes);
+        worklogForm.StartAt = start;
+        worklogForm.EndAt = end;
+    }
+
+    private void SyncSelectedWorklogSlot()
+    {
+        if (visibleDays.Count == 0)
+        {
+            worklogForm.StartAt = AlignToPlannerSlot(DateTime.Today.AddHours(9));
+            worklogForm.EndAt = worklogForm.StartAt.AddHours(1);
+            return;
+        }
+
+        if (!visibleDays.Contains(DateOnly.FromDateTime(worklogForm.StartAt)))
+        {
+            worklogForm.StartAt = visibleDays[0].ToDateTime(new TimeOnly(9, 0));
+            worklogForm.EndAt = worklogForm.StartAt.AddHours(1);
+        }
+    }
+
+    private void SyncWorklogIssueSelection()
+    {
+        if (worklogForm.IssueId.HasValue && filteredIssues.Any(x => x.Id == worklogForm.IssueId.Value))
+        {
+            return;
+        }
+
+        worklogForm.IssueId = filteredIssues.FirstOrDefault()?.Id;
+    }
+
+    private void SelectIssue(Guid issueId)
+    {
+        worklogForm.IssueId = issueId;
+    }
+
+    private async Task AddWorklogAsync()
+    {
+        if (isAddingWorklog || !worklogForm.IssueId.HasValue || worklogForm.EndAt <= worklogForm.StartAt)
+        {
+            return;
+        }
+
+        try
+        {
+            isAddingWorklog = true;
+            await WorkTrackingService.AddWorklogAsync(new AddWorklogCommand(
+                worklogForm.IssueId.Value,
+                worklogForm.StartAt,
+                worklogForm.EndAt,
+                worklogForm.Note));
+            worklogForm.Note = string.Empty;
+            worklogForm.StartAt = AlignToPlannerSlot(worklogForm.StartAt.AddHours(1));
+            worklogForm.EndAt = worklogForm.StartAt.AddHours(1);
+            await ReloadCalendarAsync();
+        }
+        finally
+        {
+            isAddingWorklog = false;
+        }
+    }
+
+    private IEnumerable<DateTime> GetPlannerSlots(DateOnly day)
+    {
+        var start = day.ToDateTime(new TimeOnly(PlannerStartHour, 0));
+        var count = (PlannerEndHour - PlannerStartHour) * 60 / PlannerSlotMinutes;
+        for (var index = 0; index < count; index++)
+        {
+            yield return start.AddMinutes(index * PlannerSlotMinutes);
+        }
+    }
+
+    private static DateTime AlignToPlannerSlot(DateTime value)
+    {
+        var minuteBlock = value.Minute < 30 ? 0 : 30;
+        return new DateTime(value.Year, value.Month, value.Day, value.Hour, minuteBlock, 0, value.Kind);
+    }
+
+    private string GetPlannerSlotStyle(DateTime slotStart)
+    {
+        var topRem = GetPlannerOffsetRem(slotStart);
+        var heightRem = PlannerHourHeightRem / 2d;
+        return FormattableString.Invariant($"top: {topRem:0.###}rem; height: {heightRem:0.###}rem;");
+    }
+
+    private string GetPlannerEntryStyle(WorklogEntryDto entry)
+    {
+        var startAt = IsReschedulingEntry(entry) && draggedWorklogPreviewStart.HasValue
+            ? draggedWorklogPreviewStart.Value
+            : entry.StartAt;
+        var endAt = startAt.AddMinutes(entry.Minutes);
+        var topRem = GetPlannerOffsetRem(startAt);
+        var heightRem = Math.Max(((endAt - startAt).TotalMinutes / 60d) * PlannerHourHeightRem, 1.8d);
+        return FormattableString.Invariant($"top: {topRem:0.###}rem; height: {heightRem:0.###}rem;");
+    }
+
+    private static double GetPlannerOffsetRem(DateTime time)
+    {
+        return ((time.Hour + time.Minute / 60d) - PlannerStartHour) * PlannerHourHeightRem;
+    }
+
+    private static string FormatHourLabel(int hour)
+    {
+        var value = new DateTime(2000, 1, 1, hour, 0, 0);
+        return value.ToString("HH:mm", CultureInfo.InvariantCulture);
+    }
+
+    private bool IsSlotSelected(DateTime slotStart)
+    {
+        return slotStart >= worklogForm.StartAt && slotStart < worklogForm.EndAt;
+    }
+
+    private bool IsReschedulingEntry(WorklogEntryDto entry)
+    {
+        return draggedWorklogEntry?.Id == entry.Id;
+    }
+
+    private async Task<Guid?> ResolveCurrentUserIdAsync()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userIdClaim = authenticationState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+    }
+
+    private sealed class WorklogPlannerForm
+    {
+        public Guid? IssueId { get; set; }
+        public DateTime StartAt { get; set; } = DateTime.Today.AddHours(9);
+        public DateTime EndAt { get; set; } = DateTime.Today.AddHours(10);
+        public string? Note { get; set; }
+    }
+
+    private static string FormatDuration(int minutes)
+    {
+        var hours = minutes / 60;
+        var remainder = minutes % 60;
+        return remainder == 0 ? $"{hours}h" : $"{hours}h {remainder}m";
+    }
+}

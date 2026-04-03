@@ -13,6 +13,7 @@ public sealed class JouraDbContext(DbContextOptions<JouraDbContext> options) : D
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Label> Labels => Set<Label>();
     public DbSet<IssueLabel> IssueLabels => Set<IssueLabel>();
+    public DbSet<WorklogEntry> WorklogEntries => Set<WorklogEntry>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AttachmentMetadata> Attachments => Set<AttachmentMetadata>();
@@ -85,6 +86,18 @@ public sealed class JouraDbContext(DbContextOptions<JouraDbContext> options) : D
             entity.Property(x => x.EventType).HasMaxLength(64);
             entity.Property(x => x.Description).HasColumnType("text");
             entity.HasOne(x => x.Actor).WithMany().HasForeignKey(x => x.ActorId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<WorklogEntry>(entity =>
+        {
+            entity.Property(x => x.StartAt).HasColumnType("timestamp without time zone");
+            entity.Property(x => x.EndAt).HasColumnType("timestamp without time zone");
+            entity.Property(x => x.Note).HasColumnType("text");
+            entity.ToTable(table => table.HasCheckConstraint("CK_WorklogEntries_Duration_Positive", "\"EndAt\" > \"StartAt\""));
+            entity.HasIndex(x => new { x.IssueId, x.StartAt });
+            entity.HasIndex(x => new { x.UserId, x.StartAt });
+            entity.HasOne(x => x.Issue).WithMany(x => x.WorklogEntries).HasForeignKey(x => x.IssueId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Notification>(entity =>

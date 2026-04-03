@@ -23,17 +23,12 @@
                 .Take(2)
                 .ToArray();
 
-            if (parts.Length == 0)
+            return parts.Length switch
             {
-                return "UA";
-            }
-
-            if (parts.Length == 1)
-            {
-                return new string(parts[0].Take(2).ToArray()).ToUpperInvariant();
-            }
-
-            return string.Concat(parts.Select(x => char.ToUpperInvariant(x[0])));
+                0 => "UA",
+                1 => new string(parts[0].Take(2).ToArray()).ToUpperInvariant(),
+                _ => string.Concat(parts.Select(x => char.ToUpperInvariant(x[0])))
+            };
         }
     }
 }

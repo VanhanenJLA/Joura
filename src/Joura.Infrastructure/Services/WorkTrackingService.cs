@@ -399,6 +399,165 @@ public sealed class WorkTrackingService(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<WorklogEntryDto>> GetIssueWorklogAsync(Guid issueId, CancellationToken cancellationToken = default)
+    {
+        var tenantId = GetTenantIdOrThrow();
+        return await dbContext.WorklogEntries
+            .AsNoTracking()
+            .Where(x => x.IssueId == issueId && x.Issue.Project.TenantId == tenantId)
+            .Include(x => x.Issue)
+            .Include(x => x.User)
+            .OrderByDescending(x => x.StartAt)
+            .ThenByDescending(x => x.CreatedUtc)
+            .Select(x => new WorklogEntryDto(
+                x.Id,
+                x.IssueId,
+                x.Issue.Key,
+                x.Issue.Title,
+                x.UserId,
+                x.User.DisplayName,
+                x.StartAt,
+                x.EndAt,
+                x.Note,
+                x.CreatedUtc))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<WorklogEntryDto>> GetWorklogEntriesAsync(WorklogFilter filter, CancellationToken cancellationToken = default)
+    {
+        var tenantId = GetTenantIdOrThrow();
+        var query = dbContext.WorklogEntries
+            .AsNoTracking()
+            .Where(x => x.Issue.Project.TenantId == tenantId)
+            .Include(x => x.Issue)
+            .ThenInclude(x => x.Status)
+            .Include(x => x.User)
+            .AsQueryable();
+
+        if (filter.ProjectId.HasValue)
+        {
+            var projectId = filter.ProjectId.Value;
+            query = query.Where(x => x.Issue.ProjectId == projectId);
+        }
+
+        if (filter.AssigneeId.HasValue)
+        {
+            var assigneeId = filter.AssigneeId.Value;
+            query = query.Where(x => x.Issue.AssigneeId == assigneeId);
+        }
+
+        if (filter.Category.HasValue)
+        {
+            var category = filter.Category.Value;
+            query = query.Where(x => x.Issue.Status.Category == category);
+        }
+
+        return await query
+            .OrderByDescending(x => x.StartAt)
+            .ThenByDescending(x => x.CreatedUtc)
+            .Select(x => new WorklogEntryDto(
+                x.Id,
+                x.IssueId,
+                x.Issue.Key,
+                x.Issue.Title,
+                x.UserId,
+                x.User.DisplayName,
+                x.StartAt,
+                x.EndAt,
+                x.Note,
+                x.CreatedUtc))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<Guid> AddWorklogAsync(AddWorklogCommand command, CancellationToken cancellationToken = default)
+    {
+        var tenantId = GetTenantIdOrThrow();
+        var actorId = GetUserIdOrThrow();
+        var minutes = ValidateWorklogInterval(command.StartAt, command.EndAt);
+
+        var issue = await dbContext.Issues
+            .FirstOrDefaultAsync(x => x.Id == command.IssueId && x.Project.TenantId == tenantId, cancellationToken)
+            ?? throw new InvalidOperationException("Issue not found.");
+
+        var entry = new WorklogEntry
+        {
+            IssueId = issue.Id,
+            UserId = actorId,
+            StartAt = command.StartAt,
+            EndAt = command.EndAt,
+            Note = command.Note?.Trim() ?? string.Empty
+        };
+
+        dbContext.WorklogEntries.Add(entry);
+        dbContext.AuditEvents.Add(new AuditEvent
+        {
+            IssueId = issue.Id,
+            ActorId = actorId,
+            EventType = "WorklogAdded",
+            Description = $"Logged {FormatDuration(minutes)} on {command.StartAt:dd MMM yyyy} from {command.StartAt:HH:mm} to {command.EndAt:HH:mm}."
+        });
+
+        issue.UpdatedUtc = DateTimeOffset.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return entry.Id;
+    }
+
+    public async Task UpdateWorklogAsync(UpdateWorklogCommand command, CancellationToken cancellationToken = default)
+    {
+        var tenantId = GetTenantIdOrThrow();
+        var actorId = GetUserIdOrThrow();
+        var minutes = ValidateWorklogInterval(command.StartAt, command.EndAt);
+
+        var entry = await dbContext.WorklogEntries
+            .Include(x => x.Issue)
+            .FirstOrDefaultAsync(x => x.Id == command.WorklogEntryId && x.Issue.Project.TenantId == tenantId, cancellationToken)
+            ?? throw new InvalidOperationException("Worklog entry not found.");
+
+        entry.StartAt = command.StartAt;
+        entry.EndAt = command.EndAt;
+        entry.Note = command.Note?.Trim() ?? string.Empty;
+        entry.UpdatedUtc = DateTimeOffset.UtcNow;
+        entry.Issue.UpdatedUtc = DateTimeOffset.UtcNow;
+
+        dbContext.AuditEvents.Add(new AuditEvent
+        {
+            IssueId = entry.IssueId,
+            ActorId = actorId,
+            EventType = "WorklogUpdated",
+            Description = $"Updated worklog to {FormatDuration(minutes)} on {command.StartAt:dd MMM yyyy} from {command.StartAt:HH:mm} to {command.EndAt:HH:mm}."
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteWorklogAsync(Guid worklogEntryId, CancellationToken cancellationToken = default)
+    {
+        var tenantId = GetTenantIdOrThrow();
+        var actorId = GetUserIdOrThrow();
+
+        var entry = await dbContext.WorklogEntries
+            .Include(x => x.Issue)
+            .FirstOrDefaultAsync(x => x.Id == worklogEntryId && x.Issue.Project.TenantId == tenantId, cancellationToken)
+            ?? throw new InvalidOperationException("Worklog entry not found.");
+
+        var duration = FormatDuration((int)(entry.EndAt - entry.StartAt).TotalMinutes);
+        var startAt = entry.StartAt;
+        var endAt = entry.EndAt;
+        var issueId = entry.IssueId;
+
+        entry.Issue.UpdatedUtc = DateTimeOffset.UtcNow;
+        dbContext.WorklogEntries.Remove(entry);
+        dbContext.AuditEvents.Add(new AuditEvent
+        {
+            IssueId = issueId,
+            ActorId = actorId,
+            EventType = "WorklogDeleted",
+            Description = $"Deleted worklog {duration} from {startAt:dd MMM yyyy} {startAt:HH:mm}-{endAt:HH:mm}."
+        });
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task SeedSampleDataAsync(CancellationToken cancellationToken = default)
     {
         await SeedTenantAsync(
@@ -489,6 +648,7 @@ public sealed class WorkTrackingService(
         var userByName = tenantUsers.ToDictionary(x => x.DisplayName, StringComparer.OrdinalIgnoreCase);
         var issues = new List<Issue>();
         var issueCreatedAuditEvents = new List<AuditEvent>();
+        var worklogEntries = new List<WorklogEntry>();
         foreach (var blueprint in issueBlueprints)
         {
             var issue = new Issue
@@ -519,11 +679,29 @@ public sealed class WorkTrackingService(
                 Description = $"Created issue {issue.Key}.",
                 CreatedUtc = issue.CreatedUtc
             });
+
+            var worklogOwner = issue.Assignee ?? issue.Reporter;
+            var baselineMinutes = blueprint.Priority switch
+            {
+                IssuePriority.High => 120,
+                IssuePriority.Medium => 90,
+                _ => 60
+            };
+
+            worklogEntries.Add(new WorklogEntry
+            {
+                Issue = issue,
+                User = worklogOwner,
+                StartAt = DateTime.UtcNow.AddDays(-1).Date.AddHours(9),
+                EndAt = DateTime.UtcNow.AddDays(-1).Date.AddHours(9).AddMinutes(baselineMinutes),
+                Note = $"Progress on {issue.Key}."
+            });
         }
 
         dbContext.AddRange(tenant, project, todo, inProgress, done);
         dbContext.Users.AddRange(tenantUsers);
         dbContext.Issues.AddRange(issues);
+        dbContext.WorklogEntries.AddRange(worklogEntries);
         dbContext.AuditEvents.AddRange(issueCreatedAuditEvents);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
@@ -598,5 +776,28 @@ public sealed class WorkTrackingService(
     {
         return currentUserContext.UserId
             ?? throw new InvalidOperationException("Authenticated user is missing.");
+    }
+
+    private static int ValidateWorklogInterval(DateTime startAt, DateTime endAt)
+    {
+        if (endAt <= startAt)
+        {
+            throw new InvalidOperationException("Worklog end time must be after start time.");
+        }
+
+        var minutes = (int)(endAt - startAt).TotalMinutes;
+        if (minutes <= 0 || minutes > 24 * 60)
+        {
+            throw new InvalidOperationException("Worklog duration must be between 1 and 1440 minutes.");
+        }
+
+        return minutes;
+    }
+
+    private static string FormatDuration(int minutes)
+    {
+        var hours = minutes / 60;
+        var remainder = minutes % 60;
+        return remainder == 0 ? $"{hours}h" : $"{hours}h {remainder}m";
     }
 }

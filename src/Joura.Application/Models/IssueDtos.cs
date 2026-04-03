@@ -56,6 +56,24 @@ public sealed record AuditEventDto(string ActorName, string EventType, string De
 
 public sealed record LabelDto(Guid Id, string Name, string Color);
 
+public sealed record WorklogEntryDto(
+    Guid Id,
+    Guid IssueId,
+    string IssueKey,
+    string IssueTitle,
+    Guid UserId,
+    string UserName,
+    DateTime StartAt,
+    DateTime EndAt,
+    string Note,
+    DateTimeOffset CreatedUtc)
+{
+    public DateOnly LoggedDate => DateOnly.FromDateTime(StartAt);
+    public int Minutes => (int)(EndAt - StartAt).TotalMinutes;
+}
+
+public sealed record WorklogFilter(Guid? ProjectId, Guid? AssigneeId, IssueStatusCategory? Category);
+
 public sealed record KanbanColumnDto(Guid StatusId, string StatusName, IssueStatusCategory Category, IReadOnlyList<IssueSummaryDto> Issues);
 
 public sealed record StatusReferenceDto(Guid Id, string Name, IssueStatusCategory Category, int SortOrder);

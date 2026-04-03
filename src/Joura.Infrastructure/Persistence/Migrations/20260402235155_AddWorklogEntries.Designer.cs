@@ -3,6 +3,7 @@ using System;
 using Joura.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Joura.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(JouraDbContext))]
-    partial class JouraDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260402235155_AddWorklogEntries")]
+    partial class AddWorklogEntries
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -390,18 +393,18 @@ namespace Joura.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedUtc")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("EndAt")
-                        .HasColumnType("timestamp without time zone");
-
                     b.Property<Guid>("IssueId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("LoggedDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Minutes")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Note")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<DateTime>("StartAt")
-                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTimeOffset>("UpdatedUtc")
                         .HasColumnType("timestamp with time zone");
@@ -411,13 +414,13 @@ namespace Joura.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IssueId", "StartAt");
+                    b.HasIndex("IssueId", "LoggedDate");
 
-                    b.HasIndex("UserId", "StartAt");
+                    b.HasIndex("UserId", "LoggedDate");
 
                     b.ToTable("WorklogEntries", t =>
                         {
-                            t.HasCheckConstraint("CK_WorklogEntries_Duration_Positive", "\"EndAt\" > \"StartAt\"");
+                            t.HasCheckConstraint("CK_WorklogEntries_Minutes_Positive", "\"Minutes\" > 0");
                         });
                 });
 

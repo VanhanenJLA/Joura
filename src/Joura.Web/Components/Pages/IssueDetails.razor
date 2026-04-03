@@ -178,6 +178,57 @@ else
                 }
             </div>
         </div>
+
+        <div class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Time</p>
+                    <h2>Worklog</h2>
+                </div>
+                <span class="selection-summary">Total @FormatDuration(worklogEntries.Sum(x => x.Minutes))</span>
+            </div>
+            <EditForm Model="worklogForm" OnValidSubmit="AddWorklogAsync">
+                <div class="form-grid">
+                    <label>
+                        <span>Start</span>
+                        <InputDate @bind-Value="worklogForm.StartAt" Type="InputDateType.DateTimeLocal" />
+                    </label>
+                    <label>
+                        <span>End</span>
+                        <InputDate @bind-Value="worklogForm.EndAt" Type="InputDateType.DateTimeLocal" />
+                    </label>
+                    <label class="full-width">
+                        <span>Note</span>
+                        <InputText @bind-Value="worklogForm.Note" />
+                    </label>
+                </div>
+                <button type="submit" class="action-button" disabled="@isAddingWorklog">Log time</button>
+            </EditForm>
+
+            <div class="timeline">
+                @foreach (var entry in worklogEntries)
+                {
+                    <article class="timeline-item">
+                        <div class="worklog-row">
+                            <strong>@entry.UserName</strong>
+                            <span>@entry.StartAt.ToString("dd MMM yyyy HH:mm") - @entry.EndAt.ToString("HH:mm")</span>
+                        </div>
+                        <div class="worklog-row">
+                            <span class="pill">@FormatDuration(entry.Minutes)</span>
+                            <button type="button"
+                                    class="action-button action-button-secondary worklog-delete"
+                                    @onclick="() => DeleteWorklogAsync(entry.Id)">
+                                Delete
+                            </button>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(entry.Note))
+                        {
+                            <p>@entry.Note</p>
+                        }
+                    </article>
+                }
+            </div>
+        </div>
     </section>
 }
 
@@ -186,11 +237,14 @@ else
 
     private IssueDetailDto? issue;
     private readonly CommentForm commentForm = new();
+    private readonly WorklogForm worklogForm = new();
     private Guid? currentUserId;
     private List<UserReferenceDto> users = [];
+    private List<WorklogEntryDto> worklogEntries = [];
     private readonly EditIssueForm editForm = new();
     private bool isEditing;
     private bool isSavingEdit;
+    private bool isAddingWorklog;
 
     protected override async Task OnInitializedAsync()
     {
@@ -214,6 +268,9 @@ else
     private async Task ReloadAsync()
     {
         issue = await WorkTrackingService.GetIssueAsync(IssueId);
+        worklogEntries = issue is null
+            ? []
+            : (await WorkTrackingService.GetIssueWorklogAsync(IssueId)).ToList();
         if (issue is null)
         {
             isEditing = false;
@@ -275,6 +332,13 @@ else
         public string Body { get; set; } = string.Empty;
     }
 
+    private sealed class WorklogForm
+    {
+        public DateTime StartAt { get; set; } = DateTime.Today.AddHours(9);
+        public DateTime EndAt { get; set; } = DateTime.Today.AddHours(10);
+        public string? Note { get; set; }
+    }
+
     private sealed class EditIssueForm
     {
         public string Title { get; set; } = string.Empty;
@@ -298,5 +362,44 @@ else
         return string.IsNullOrWhiteSpace(labels)
             ? []
             : labels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    private async Task AddWorklogAsync()
+    {
+        if (issue is null || isAddingWorklog || worklogForm.EndAt <= worklogForm.StartAt)
+        {
+            return;
+        }
+
+        try
+        {
+            isAddingWorklog = true;
+            await WorkTrackingService.AddWorklogAsync(new AddWorklogCommand(
+                issue.Id,
+                worklogForm.StartAt,
+                worklogForm.EndAt,
+                worklogForm.Note));
+            worklogForm.Note = string.Empty;
+            worklogForm.StartAt = DateTime.Today.AddHours(9);
+            worklogForm.EndAt = DateTime.Today.AddHours(10);
+            await ReloadAsync();
+        }
+        finally
+        {
+            isAddingWorklog = false;
+        }
+    }
+
+    private async Task DeleteWorklogAsync(Guid worklogEntryId)
+    {
+        await WorkTrackingService.DeleteWorklogAsync(worklogEntryId);
+        await ReloadAsync();
+    }
+
+    private static string FormatDuration(int minutes)
+    {
+        var hours = minutes / 60;
+        var remainder = minutes % 60;
+        return remainder == 0 ? $"{hours}h" : $"{hours}h {remainder}m";
     }
 }

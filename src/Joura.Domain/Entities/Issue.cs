@@ -24,6 +24,7 @@ public sealed class Issue : Entity
     public uint RowVersion { get; set; }
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<IssueLabel> IssueLabels { get; set; } = new List<IssueLabel>();
+    public ICollection<WorklogEntry> WorklogEntries { get; set; } = new List<WorklogEntry>();
     public ICollection<AuditEvent> AuditEvents { get; set; } = new List<AuditEvent>();
     public ICollection<AttachmentMetadata> Attachments { get; set; } = new List<AttachmentMetadata>();
 }

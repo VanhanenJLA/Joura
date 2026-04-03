@@ -1,0 +1,154 @@
+@page "/worklog/search"
+@rendermode InteractiveServer
+@inject IWorkTrackingService WorkTrackingService
+
+<PageTitle>Worklog Search</PageTitle>
+
+<section class="panel-card calendar-shell">
+    <div class="calendar-header">
+        <div>
+            <p class="panel-kicker">Planning</p>
+            <h1>Worklog Search</h1>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <p class="empty-state">Loading worklog...</p>
+    }
+    else
+    {
+        <div class="calendar-filters">
+            <label>
+                <span>Search</span>
+                <InputText @bind-Value="worklogSearchText" />
+            </label>
+            <label>
+                <span>Project</span>
+                <InputSelect @bind-Value="filter.ProjectId" @bind-Value:after="ReloadAsync">
+                    <option value="">All</option>
+                    @foreach (var project in projects)
+                    {
+                        <option value="@project.Id">@project.Key</option>
+                    }
+                </InputSelect>
+            </label>
+            <label>
+                <span>Assignee</span>
+                <InputSelect @bind-Value="filter.AssigneeId" @bind-Value:after="ReloadAsync">
+                    <option value="">Anyone</option>
+                    @foreach (var user in users)
+                    {
+                        <option value="@user.Id">@user.DisplayName</option>
+                    }
+                </InputSelect>
+            </label>
+            <label>
+                <span>Status</span>
+                <InputSelect @bind-Value="filter.Category" @bind-Value:after="ReloadAsync">
+                    <option value="">All</option>
+                    @foreach (var category in Enum.GetValues<IssueStatusCategory>())
+                    {
+                        <option value="@category">@category</option>
+                    }
+                </InputSelect>
+            </label>
+        </div>
+
+        <section class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Results</p>
+                    <h2>@VisibleWorklogEntries.Count worklog items</h2>
+                </div>
+            </div>
+
+            <div class="issues-grid-scroll">
+                <QuickGrid Items="VisibleWorklogEntries.AsQueryable()" Class="issues-grid-table">
+                    <TemplateColumn Title="Issue" SortBy="SortWorklogByIssue">
+                        <a class="text-link" href="/issues/@context.IssueId">@context.IssueKey</a>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Title" SortBy="SortWorklogByTitle">
+                        <span>@context.IssueTitle</span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="User" SortBy="SortWorklogByUser">
+                        <span>@context.UserName</span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Start" SortBy="SortWorklogByStart">
+                        <span>@context.StartAt.ToString("dd MMM yyyy HH:mm")</span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="End" SortBy="SortWorklogByEnd">
+                        <span>@context.EndAt.ToString("dd MMM yyyy HH:mm")</span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Duration" SortBy="SortWorklogByMinutes">
+                        <span class="pill">@FormatDuration(context.Minutes)</span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Note" SortBy="SortWorklogByNote">
+                        <span>@(string.IsNullOrWhiteSpace(context.Note) ? "-" : context.Note)</span>
+                    </TemplateColumn>
+                </QuickGrid>
+            </div>
+        </section>
+    }
+</section>
+
+@code {
+    private static readonly GridSort<WorklogEntryDto> SortWorklogByIssue = GridSort<WorklogEntryDto>.ByAscending(x => x.IssueKey);
+    private static readonly GridSort<WorklogEntryDto> SortWorklogByTitle = GridSort<WorklogEntryDto>.ByAscending(x => x.IssueTitle);
+    private static readonly GridSort<WorklogEntryDto> SortWorklogByUser = GridSort<WorklogEntryDto>.ByAscending(x => x.UserName);
+    private static readonly GridSort<WorklogEntryDto> SortWorklogByStart = GridSort<WorklogEntryDto>.ByAscending(x => x.StartAt);
+    private static readonly GridSort<WorklogEntryDto> SortWorklogByEnd = GridSort<WorklogEntryDto>.ByAscending(x => x.EndAt);
+    private static readonly GridSort<WorklogEntryDto> SortWorklogByMinutes = GridSort<WorklogEntryDto>.ByAscending(x => x.Minutes);
+    private static readonly GridSort<WorklogEntryDto> SortWorklogByNote = GridSort<WorklogEntryDto>.ByAscending(x => x.Note);
+
+    private readonly WorklogFilterState filter = new();
+    private List<ProjectReferenceDto> projects = [];
+    private List<UserReferenceDto> users = [];
+    private List<WorklogEntryDto> worklogEntries = [];
+    private string worklogSearchText = string.Empty;
+    private bool isLoading = true;
+
+    private List<WorklogEntryDto> VisibleWorklogEntries => worklogEntries
+        .Where(entry => string.IsNullOrWhiteSpace(worklogSearchText)
+            || entry.IssueKey.Contains(worklogSearchText, StringComparison.OrdinalIgnoreCase)
+            || entry.IssueTitle.Contains(worklogSearchText, StringComparison.OrdinalIgnoreCase)
+            || entry.UserName.Contains(worklogSearchText, StringComparison.OrdinalIgnoreCase)
+            || entry.Note.Contains(worklogSearchText, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            projects = (await WorkTrackingService.GetProjectsAsync()).ToList();
+            users = (await WorkTrackingService.GetUsersAsync()).ToList();
+            await ReloadAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        worklogEntries = (await WorkTrackingService.GetWorklogEntriesAsync(
+            new WorklogFilter(filter.ProjectId, filter.AssigneeId, filter.Category)))
+            .OrderByDescending(x => x.StartAt)
+            .ToList();
+    }
+
+    private sealed class WorklogFilterState
+    {
+        public Guid? ProjectId { get; set; }
+        public Guid? AssigneeId { get; set; }
+        public IssueStatusCategory? Category { get; set; }
+    }
+
+    private static string FormatDuration(int minutes)
+    {
+        var hours = minutes / 60;
+        var remainder = minutes % 60;
+        return remainder == 0 ? $"{hours}h" : $"{hours}h {remainder}m";
+    }
+}
