@@ -119,7 +119,6 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-08-01' = {
     createMode: 'Default'
     freeLimitExhaustionBehavior: 'AutoPause'
     maxSizeBytes: 34359738368
-    minCapacity: 1
     readScale: 'Disabled'
     requestedBackupStorageRedundancy: 'Local'
     useFreeLimit: true
