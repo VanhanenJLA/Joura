@@ -9,7 +9,7 @@
 <section class="panel-card calendar-shell">
     <div class="calendar-header">
         <div>
-            <p class="panel-kicker">Planning</p>
+            <p class="panel-kicker">Worklog</p>
             <h1>Worklog</h1>
             <p class="body-copy">Drag across time slots to select a range. Drag an entry to reschedule it.</p>
         </div>
@@ -82,7 +82,7 @@
             <aside class="calendar-planner-editor">
                 <div class="panel-header">
                     <div>
-                        <p class="panel-kicker">Quick Log</p>
+                        <p class="panel-kicker">Log Time</p>
                         <h2>@worklogForm.StartAt.ToString("dddd d MMMM")</h2>
                     </div>
                     <span class="selection-summary">@worklogForm.StartAt.ToString("HH:mm") - @worklogForm.EndAt.ToString("HH:mm")</span>
@@ -117,7 +117,7 @@
                             <InputText @bind-Value="worklogForm.Note" />
                         </label>
                     </div>
-                    <button type="submit" class="action-button" disabled="@isAddingWorklog">Log time</button>
+                    <button type="submit" class="action-button" disabled="@isAddingWorklog">Submit</button>
                 </EditForm>
             </aside>
         </section>

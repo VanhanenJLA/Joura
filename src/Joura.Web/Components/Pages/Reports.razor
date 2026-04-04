@@ -5,20 +5,20 @@
 
 <PageTitle>Reports</PageTitle>
 
-<section class="panel-card calendar-shell">
-    <div class="calendar-header">
-        <div>
-            <p class="panel-kicker">Planning</p>
-            <h1>Reports</h1>
+@if (isLoading)
+{
+    <p class="empty-state">Loading worklog...</p>
+}
+else
+{
+    <section class="panel-card calendar-shell">
+        <div class="calendar-header">
+            <div>
+                <p class="panel-kicker">Reports</p>
+                <h1>Search</h1>
+            </div>
         </div>
-    </div>
 
-    @if (isLoading)
-    {
-        <p class="empty-state">Loading worklog...</p>
-    }
-    else
-    {
         <div class="calendar-filters">
             <label>
                 <span>Search</span>
@@ -55,43 +55,43 @@
                 </InputSelect>
             </label>
         </div>
+    </section>
 
-        <section class="panel-card">
-            <div class="panel-header">
-                <div>
-                    <p class="panel-kicker">Results</p>
-                    <h2>@VisibleWorklogEntries.Count worklog items</h2>
-                </div>
+    <section class="panel-card">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">Results</p>
+                <h2>@VisibleWorklogEntries.Count worklog items</h2>
             </div>
+        </div>
 
-            <div class="issues-grid-scroll">
-                <QuickGrid Items="VisibleWorklogEntries.AsQueryable()" Class="issues-grid-table">
-                    <TemplateColumn Title="Issue" SortBy="SortWorklogByIssue">
-                        <a class="text-link" href="/issues/@context.IssueId">@context.IssueKey</a>
-                    </TemplateColumn>
-                    <TemplateColumn Title="Title" SortBy="SortWorklogByTitle">
-                        <span>@context.IssueTitle</span>
-                    </TemplateColumn>
-                    <TemplateColumn Title="User" SortBy="SortWorklogByUser">
-                        <span>@context.UserName</span>
-                    </TemplateColumn>
-                    <TemplateColumn Title="Start" SortBy="SortWorklogByStart">
-                        <span>@context.StartAt.ToString("dd MMM yyyy HH:mm")</span>
-                    </TemplateColumn>
-                    <TemplateColumn Title="End" SortBy="SortWorklogByEnd">
-                        <span>@context.EndAt.ToString("dd MMM yyyy HH:mm")</span>
-                    </TemplateColumn>
-                    <TemplateColumn Title="Duration" SortBy="SortWorklogByMinutes">
-                        <span class="pill">@FormatDuration(context.Minutes)</span>
-                    </TemplateColumn>
-                    <TemplateColumn Title="Note" SortBy="SortWorklogByNote">
-                        <span>@(string.IsNullOrWhiteSpace(context.Note) ? "-" : context.Note)</span>
-                    </TemplateColumn>
-                </QuickGrid>
-            </div>
-        </section>
-    }
-</section>
+        <div class="issues-grid-scroll">
+            <QuickGrid Items="VisibleWorklogEntries.AsQueryable()" Class="issues-grid-table">
+                <TemplateColumn Title="Issue" SortBy="SortWorklogByIssue">
+                    <a class="text-link" href="/issues/@context.IssueId">@context.IssueKey</a>
+                </TemplateColumn>
+                <TemplateColumn Title="Title" SortBy="SortWorklogByTitle">
+                    <span>@context.IssueTitle</span>
+                </TemplateColumn>
+                <TemplateColumn Title="User" SortBy="SortWorklogByUser">
+                    <span>@context.UserName</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Start" SortBy="SortWorklogByStart">
+                    <span>@context.StartAt.ToString("dd MMM yyyy HH:mm")</span>
+                </TemplateColumn>
+                <TemplateColumn Title="End" SortBy="SortWorklogByEnd">
+                    <span>@context.EndAt.ToString("dd MMM yyyy HH:mm")</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Duration" SortBy="SortWorklogByMinutes">
+                    <span class="pill">@FormatDuration(context.Minutes)</span>
+                </TemplateColumn>
+                <TemplateColumn Title="Note" SortBy="SortWorklogByNote">
+                    <span>@(string.IsNullOrWhiteSpace(context.Note) ? "-" : context.Note)</span>
+                </TemplateColumn>
+            </QuickGrid>
+        </div>
+    </section>
+}
 
 @code {
     private static readonly GridSort<WorklogEntryDto> SortWorklogByIssue = GridSort<WorklogEntryDto>.ByAscending(x => x.IssueKey);
