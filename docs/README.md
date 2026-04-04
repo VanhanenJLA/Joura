@@ -33,6 +33,18 @@ dotnet run --project src/Joura.Web
 
 The default connection string is in [appsettings.Development.json](/Users/jouni/repos/VanhanenJLA/Joura/Joura/src/Joura.Web/appsettings.Development.json).
 
+## Database providers
+
+The app supports two configured providers:
+
+- `PostgreSql` for local/default development
+- `SqlServer` for Azure SQL-style deployments
+
+Set `DatabaseProvider` and the matching connection string in configuration.
+
+- PostgreSQL uses EF Core migrations on startup.
+- SQL Server currently bootstraps schema with `EnsureCreated()` on startup and is intended for deployment environments until a dedicated SQL Server migration set is added.
+
 ## Notes
 
 - The app now uses EF Core migrations as the source of truth for schema management.

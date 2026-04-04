@@ -99,7 +99,15 @@ app.MapRazorComponents<App>()
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<JouraDbContext>();
-    await dbContext.Database.MigrateAsync();
+    var databaseProvider = DependencyInjection.ResolveDatabaseProvider(app.Configuration);
+    if (databaseProvider == DatabaseProvider.PostgreSql)
+    {
+        await dbContext.Database.MigrateAsync();
+    }
+    else
+    {
+        await dbContext.Database.EnsureCreatedAsync();
+    }
 
     var workTrackingService = scope.ServiceProvider.GetRequiredService<Joura.Application.Abstractions.IWorkTrackingService>();
     await workTrackingService.SeedSampleDataAsync();
