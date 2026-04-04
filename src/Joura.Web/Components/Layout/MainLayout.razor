@@ -1,4 +1,6 @@
 ﻿@inherits LayoutComponentBase
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IDbContextFactory<JouraDbContext> DbContextFactory
 
 <div class="page">
     <div class="sidebar">
@@ -8,15 +10,15 @@
     <main>
         <div class="top-row">
             <div>
-                <p class="eyebrow">Joura</p>
-                <p class="top-title">We have Jira at home.</p>
+                <p class="eyebrow">Tenant</p>
+                <p class="top-title">@(tenantName ?? tenantKey ?? "Unknown tenant")</p>
             </div>
-            <div class="top-meta">
-                <span>Blazor</span>
-                <span>.NET</span>
-                <span>PostgreSQL</span>
-                <span>Azure</span>
-            </div>
+            @if (!string.IsNullOrWhiteSpace(tenantKey))
+            {
+                <div class="top-meta">
+                    <span>@tenantKey</span>
+                </div>
+            }
         </div>
 
         <article class="content">
@@ -30,3 +32,42 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    private string? tenantName;
+    private string? tenantKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        tenantName = authenticationState.User.FindFirst(Joura.Application.Abstractions.AuthClaimTypes.TenantName)?.Value;
+        tenantKey = authenticationState.User.FindFirst(Joura.Application.Abstractions.AuthClaimTypes.TenantKey)?.Value;
+
+        if (!string.IsNullOrWhiteSpace(tenantName) && !string.IsNullOrWhiteSpace(tenantKey))
+        {
+            return;
+        }
+
+        var userIdClaim = authenticationState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId))
+        {
+            return;
+        }
+
+        await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+        var tenant = await dbContext.Users
+            .AsNoTracking()
+            .Include(x => x.Tenant)
+            .Where(x => x.Id == userId)
+            .Select(x => new { x.Tenant.Name, x.Tenant.Key })
+            .FirstOrDefaultAsync();
+
+        if (tenant is null)
+        {
+            return;
+        }
+
+        tenantName = tenant.Name;
+        tenantKey = tenant.Key;
+    }
+}

@@ -1,4 +1,4 @@
-<span class="initialism-avatar"
+<span class="@CssClass"
       title="@Tooltip"
       aria-label="@Tooltip">
     @Initials
@@ -6,8 +6,10 @@
 
 @code {
     [Parameter] public string? Name { get; set; }
+    [Parameter] public string? Class { get; set; }
 
     private string Tooltip => string.IsNullOrWhiteSpace(Name) ? "Unassigned" : Name;
+    private string CssClass => string.IsNullOrWhiteSpace(Class) ? "initialism-avatar" : $"initialism-avatar {Class}";
 
     private string Initials
     {

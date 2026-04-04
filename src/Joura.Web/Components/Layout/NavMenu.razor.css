@@ -124,19 +124,15 @@
     text-decoration: none !important;
 }
 
+.nav-user-trigger {
+    cursor: pointer;
+}
+
 .nav-user-display:hover,
 .nav-user-display:focus,
 .nav-user-display:visited,
 .nav-user-display:active {
     text-decoration: none !important;
-}
-
-.nav-user-display ::deep .initialism-avatar {
-    width: 2rem;
-    height: 2rem;
-    border-color: rgba(244, 239, 229, 0.52) !important;
-    background: rgba(244, 239, 229, 0.96) !important;
-    color: #132522 !important;
 }
 
 .nav-scrollable {

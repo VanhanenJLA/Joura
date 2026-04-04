@@ -71,7 +71,9 @@ app.MapPost("/auth/login", async (HttpContext httpContext, JouraDbContext dbCont
         new(ClaimTypes.Name, user.DisplayName),
         new(ClaimTypes.Email, user.Email),
         new(ClaimTypes.Role, user.Role.ToString()),
-        new(AuthClaimTypes.TenantId, user.TenantId.ToString())
+        new(AuthClaimTypes.TenantId, user.TenantId.ToString()),
+        new(AuthClaimTypes.TenantName, user.Tenant.Name),
+        new(AuthClaimTypes.TenantKey, user.Tenant.Key)
     };
 
     var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));

@@ -15,7 +15,10 @@ public static class DependencyInjection
             ?? "Host=localhost;Port=5432;Database=joura;Username=joura;Password=joura";
 
         services.AddHttpContextAccessor();
-        services.AddDbContext<JouraDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContext<JouraDbContext>(
+            options => options.UseNpgsql(connectionString),
+            optionsLifetime: ServiceLifetime.Singleton);
+        services.AddDbContextFactory<JouraDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
         services.AddScoped<IWorkTrackingService, WorkTrackingService>();
         return services;

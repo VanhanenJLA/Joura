@@ -350,6 +350,20 @@ section + section {
     user-select: none;
 }
 
+.nav-initialism-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-color: rgba(244, 239, 229, 0.72);
+    background: #f4efe5;
+    color: #132522;
+}
+
+.nav-user-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
 .issues-grid-table {
     width: 100%;
     min-width: 1040px;

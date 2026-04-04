@@ -8,12 +8,12 @@
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable">
     <nav class="nav-shell">
         <AuthorizeView>
             <Authorized>
                 <div class="nav-main">
-                    <div class="nav-group">Tenant</div>
+                    <div class="nav-group">Navigation</div>
                     <div class="nav-item px-3">
                         <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
                             <span class="nav-icon">🏠</span> Home
@@ -45,7 +45,7 @@
                     </div>
 
                     <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="worklog/search">
+                        <NavLink class="nav-link" href="reports">
                             <span class="nav-icon">🔎</span> Reports
                         </NavLink>
                     </div>
@@ -54,20 +54,10 @@
                 <div class="nav-account">
                     <div class="nav-group">Signed in as</div>
                     <div class="nav-item px-3">
-                        <span class="nav-link nav-user-display">
-                            <InitialismAvatar Name="@context.User.Identity?.Name" />
+                        <NavLink class="nav-link nav-user-display nav-user-trigger" href="me">
+                            <InitialismAvatar Name="@context.User.Identity?.Name" Class="nav-initialism-avatar" />
                             <span>@context.User.Identity?.Name</span>
-                        </span>
-                    </div>
-                    <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="me">
-                            <span class="nav-icon">👤</span> My profile
                         </NavLink>
-                    </div>
-                    <div class="nav-item px-3">
-                        <form method="post" action="/auth/logout">
-                            <button type="submit" class="nav-link text-start w-100">🚪 Sign out</button>
-                        </form>
                     </div>
                 </div>
             </Authorized>
