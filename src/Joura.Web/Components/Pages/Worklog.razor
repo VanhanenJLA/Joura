@@ -11,6 +11,7 @@
         <div>
             <p class="panel-kicker">Planning</p>
             <h1>Worklog</h1>
+            <p class="body-copy">Drag across time slots to select a range. Drag an entry to reschedule it.</p>
         </div>
         <div class="calendar-controls">
             <button type="button" class="action-button action-button-secondary" @onclick="PreviousWeek">Previous</button>
@@ -25,7 +26,6 @@
     }
     else
     {
-        <p class="selection-summary worklog-input-caption">Input view shows your own worklog entries.</p>
         <section class="calendar-planner">
             <div class="calendar-planner-surface" @onmouseup="HandlePlannerPointerUp" @onmouseleave="CancelPlannerPointerInteraction">
                 <div class="calendar-planner-grid-outlook">
@@ -92,17 +92,17 @@
                     <div class="form-grid">
                         <label class="full-width">
                             <span>Issue</span>
-                            <InputSelect @bind-Value="worklogForm.IssueId">
-                                <option value="">Select issue</option>
+                            <input class="form-control"
+                                   list="worklog-issue-options"
+                                   @bind="issueInputText"
+                                   @bind:event="oninput"
+                                   @onchange="SyncIssueSelectionFromInput" />
+                            <datalist id="worklog-issue-options">
                                 @foreach (var issue in filteredIssues)
                                 {
-                                    <option value="@issue.Id">@issue.Key - @issue.Title</option>
+                                    <option value="@FormatIssueOption(issue)"></option>
                                 }
-                            </InputSelect>
-                        </label>
-                        <label class="full-width">
-                            <span>Find issue</span>
-                            <InputText @bind-Value="issueSearchText" />
+                            </datalist>
                         </label>
                         <label>
                             <span>Start</span>
@@ -116,24 +116,6 @@
                             <span>Note</span>
                             <InputText @bind-Value="worklogForm.Note" />
                         </label>
-                    </div>
-                    <div class="worklog-issue-browser">
-                        @if (VisibleIssues.Count == 0)
-                        {
-                            <p class="empty-state">No matching issues.</p>
-                        }
-                        else
-                        {
-                            @foreach (var issue in VisibleIssues)
-                            {
-                                <button type="button"
-                                        class="worklog-issue-option @(worklogForm.IssueId == issue.Id ? "worklog-issue-option-selected" : string.Empty)"
-                                        @onclick="() => SelectIssue(issue.Id)">
-                                    <strong>@issue.Key</strong>
-                                    <span>@issue.Title</span>
-                                </button>
-                            }
-                        }
                     </div>
                     <button type="submit" class="action-button" disabled="@isAddingWorklog">Log time</button>
                 </EditForm>
@@ -151,7 +133,7 @@
     private List<ProjectReferenceDto> projects = [];
     private Guid? currentUserId;
     private DateOnly currentDate = DateOnly.FromDateTime(DateTime.Today);
-    private string issueSearchText = string.Empty;
+    private string issueInputText = string.Empty;
     private DayOfWeek firstDayOfWeek = DayOfWeek.Monday;
     private bool isLoading;
     private bool isAddingWorklog;
@@ -166,13 +148,6 @@
     private const double PlannerHourHeightRem = 5.0;
 
     private string WeekTitle => $"{GetStartOfWeek(currentDate).ToDateTime(TimeOnly.MinValue):d MMM} - {GetStartOfWeek(currentDate).AddDays(6).ToDateTime(TimeOnly.MinValue):d MMM yyyy}";
-    private List<IssueSummaryDto> VisibleIssues => filteredIssues
-        .Where(issue => string.IsNullOrWhiteSpace(issueSearchText)
-            || issue.Key.Contains(issueSearchText, StringComparison.OrdinalIgnoreCase)
-            || issue.Title.Contains(issueSearchText, StringComparison.OrdinalIgnoreCase))
-        .Take(12)
-        .ToList();
-
     protected override async Task OnInitializedAsync()
     {
         currentUserId = await ResolveCurrentUserIdAsync();
@@ -379,19 +354,18 @@
     {
         if (worklogForm.IssueId.HasValue && filteredIssues.Any(x => x.Id == worklogForm.IssueId.Value))
         {
+            issueInputText = FormatIssueOption(filteredIssues.First(x => x.Id == worklogForm.IssueId.Value));
             return;
         }
 
-        worklogForm.IssueId = filteredIssues.FirstOrDefault()?.Id;
-    }
-
-    private void SelectIssue(Guid issueId)
-    {
-        worklogForm.IssueId = issueId;
+        var firstIssue = filteredIssues.FirstOrDefault();
+        worklogForm.IssueId = firstIssue?.Id;
+        issueInputText = firstIssue is null ? string.Empty : FormatIssueOption(firstIssue);
     }
 
     private async Task AddWorklogAsync()
     {
+        SyncIssueSelectionFromInput();
         if (isAddingWorklog || !worklogForm.IssueId.HasValue || worklogForm.EndAt <= worklogForm.StartAt)
         {
             return;
@@ -470,6 +444,21 @@
     {
         return draggedWorklogEntry?.Id == entry.Id;
     }
+
+    private void SyncIssueSelectionFromInput()
+    {
+        var match = filteredIssues.FirstOrDefault(issue =>
+            string.Equals(FormatIssueOption(issue), issueInputText, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(issue.Key, issueInputText, StringComparison.OrdinalIgnoreCase));
+
+        worklogForm.IssueId = match?.Id;
+        if (match is not null)
+        {
+            issueInputText = FormatIssueOption(match);
+        }
+    }
+
+    private static string FormatIssueOption(IssueSummaryDto issue) => $"{issue.Key} - {issue.Title}";
 
     private async Task<Guid?> ResolveCurrentUserIdAsync()
     {

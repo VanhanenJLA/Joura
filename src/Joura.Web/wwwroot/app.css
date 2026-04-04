@@ -698,6 +698,22 @@ section + section {
     gap: 0.65rem;
 }
 
+.due-dates-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 19rem;
+    gap: 1rem;
+    align-items: start;
+}
+
+.due-dates-filter-card {
+    padding: 1rem;
+}
+
+.due-dates-filters {
+    grid-template-columns: 1fr;
+    margin-bottom: 0;
+}
+
 .calendar-planner {
     display: grid;
     grid-template-columns: minmax(0, 1.9fr) minmax(280px, 0.9fr);
@@ -824,37 +840,6 @@ section + section {
     margin-bottom: 1rem;
 }
 
-.worklog-issue-browser {
-    display: grid;
-    gap: 0.45rem;
-    margin: 0 0 1rem;
-    max-height: 16rem;
-    overflow-y: auto;
-}
-
-.worklog-issue-option {
-    display: grid;
-    gap: 0.12rem;
-    text-align: left;
-    padding: 0.6rem 0.7rem;
-    border-radius: 0.8rem;
-    border: 1px solid rgba(32, 58, 54, 0.12);
-    background: rgba(255, 255, 255, 0.74);
-    color: var(--foreground);
-}
-
-.worklog-issue-option:hover {
-    background: rgba(255, 250, 242, 0.94);
-}
-
-.worklog-issue-option-selected {
-    border-color: rgba(164, 84, 43, 0.48);
-    background: rgba(255, 241, 224, 0.96);
-}
-
-.worklog-input-caption {
-    margin-bottom: 0.9rem;
-}
 
 .calendar-weekdays {
     margin-bottom: 0.55rem;
@@ -999,6 +984,10 @@ section + section {
 
     .calendar-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .due-dates-layout {
+        grid-template-columns: 1fr;
     }
 
     .calendar-planner {
