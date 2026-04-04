@@ -565,19 +565,15 @@ public sealed class WorkTrackingService(
             tenantName: "Demo Company",
             projectKey: "JOU",
             projectName: "Joura Platform",
-            projectDescription: "Homemade issue tracking built on vibes.",
+            projectDescription: "Self-referential demo project tracking the features Joura has grown so far.",
             users:
             [
-                ("Avery Architect", "avery@joura.local", ProjectRole.Admin),
-                ("Priya PM", "priya@joura.local", ProjectRole.ProjectManager),
-                ("Devon Developer", "devon@joura.local", ProjectRole.Member)
+                new SeedUser("Avery Architect", "avery@joura.local", ProjectRole.Admin),
+                new SeedUser("Priya PM", "priya@joura.local", ProjectRole.ProjectManager),
+                new SeedUser("Devon Developer", "devon@joura.local", ProjectRole.Member),
+                new SeedUser("Quinn QA", "quinn@joura.local", ProjectRole.Member)
             ],
-            issueBlueprints:
-            [
-                ("JOU-1", "Define modular monolith boundaries", "Split the solution into domain, application, infrastructure, and web projects.", IssueType.Story, IssuePriority.High, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3).Date), "To Do", "Avery Architect", "Priya PM", new[] { "architecture" }),
-                ("JOU-2", "Wire PostgreSQL persistence", "Add EF Core, Npgsql, and the initial issue tracking schema.", IssueType.Task, IssuePriority.High, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7).Date), "In Progress", "Priya PM", "Devon Developer", new[] { "azure", "backend" }),
-                ("JOU-3", "Draft Azure target architecture", "Document App Service, PostgreSQL, Blob Storage, Key Vault, and Application Insights.", IssueType.Task, IssuePriority.Medium, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(12).Date), "Done", "Avery Architect", "Devon Developer", new[] { "azure" })
-            ],
+            issueBlueprints: BuildDemoIssueBlueprints(),
             cancellationToken);
 
         await SeedTenantAsync(
@@ -588,16 +584,11 @@ public sealed class WorkTrackingService(
             projectDescription: "Second tenant to validate isolation across authentication and data access.",
             users:
             [
-                ("Nina Ninja", "nina@joura.local", ProjectRole.Admin),
-                ("Paul Product", "paul@joura.local", ProjectRole.ProjectManager),
-                ("Mika Maker", "mika@joura.local", ProjectRole.Member)
+                new SeedUser("Nina Ninja", "nina@joura.local", ProjectRole.Admin),
+                new SeedUser("Paul Product", "paul@joura.local", ProjectRole.ProjectManager),
+                new SeedUser("Mika Maker", "mika@joura.local", ProjectRole.Member)
             ],
-            issueBlueprints:
-            [
-                ("ITSU-1", "Create customer onboarding flow", "Build signup and onboarding screens for the portal.", IssueType.Story, IssuePriority.High, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5).Date), "To Do", "Nina Ninja", "Paul Product", new[] { "frontend" }),
-                ("ITSU-2", "Implement account settings API", "Add backend endpoints for profile and preference updates.", IssueType.Task, IssuePriority.Medium, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(9).Date), "In Progress", "Paul Product", "Mika Maker", new[] { "backend" }),
-                ("ITSU-3", "Enable audit export", "Support CSV export for tenant-level audit trail.", IssueType.Task, IssuePriority.Low, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(15).Date), "Done", "Nina Ninja", "Mika Maker", new[] { "architecture" })
-            ],
+            issueBlueprints: BuildItsuIssueBlueprints(),
             cancellationToken);
     }
 
@@ -607,8 +598,8 @@ public sealed class WorkTrackingService(
         string projectKey,
         string projectName,
         string projectDescription,
-        IReadOnlyList<(string DisplayName, string Email, ProjectRole Role)> users,
-        IReadOnlyList<(string Key, string Title, string Description, IssueType Type, IssuePriority Priority, DateOnly? DueDate, string StatusName, string ReporterName, string AssigneeName, IReadOnlyList<string> Labels)> issueBlueprints,
+        IReadOnlyList<SeedUser> users,
+        IReadOnlyList<SeedIssueBlueprint> issueBlueprints,
         CancellationToken cancellationToken)
     {
         if (await dbContext.Tenants.AnyAsync(x => x.Key == tenantKey, cancellationToken))
@@ -647,22 +638,28 @@ public sealed class WorkTrackingService(
 
         var userByName = tenantUsers.ToDictionary(x => x.DisplayName, StringComparer.OrdinalIgnoreCase);
         var issues = new List<Issue>();
-        var issueCreatedAuditEvents = new List<AuditEvent>();
+        var comments = new List<Comment>();
+        var auditEvents = new List<AuditEvent>();
         var worklogEntries = new List<WorklogEntry>();
         foreach (var blueprint in issueBlueprints)
         {
+            var createdUtc = CreateSeedTimestamp(blueprint.CreatedDaysAgo, 9, 0);
             var issue = new Issue
             {
                 Project = project,
                 Status = statusByName[blueprint.StatusName],
                 Reporter = userByName[blueprint.ReporterName],
-                Assignee = userByName[blueprint.AssigneeName],
+                Assignee = blueprint.AssigneeName is null ? null : userByName[blueprint.AssigneeName],
                 Key = blueprint.Key,
                 Title = blueprint.Title,
                 Description = blueprint.Description,
                 Type = blueprint.Type,
                 Priority = blueprint.Priority,
-                DueDate = blueprint.DueDate
+                DueDate = blueprint.DueDateOffsetDays.HasValue
+                    ? DateOnly.FromDateTime(DateTime.UtcNow.AddDays(blueprint.DueDateOffsetDays.Value).Date)
+                    : null,
+                CreatedUtc = createdUtc,
+                UpdatedUtc = createdUtc
             };
 
             foreach (var labelName in blueprint.Labels)
@@ -671,38 +668,101 @@ public sealed class WorkTrackingService(
             }
 
             issues.Add(issue);
-            issueCreatedAuditEvents.Add(new AuditEvent
+            auditEvents.Add(new AuditEvent
             {
                 Issue = issue,
                 Actor = issue.Reporter,
                 EventType = "IssueCreated",
                 Description = $"Created issue {issue.Key}.",
-                CreatedUtc = issue.CreatedUtc
+                CreatedUtc = createdUtc
             });
 
-            var worklogOwner = issue.Assignee ?? issue.Reporter;
-            var baselineMinutes = blueprint.Priority switch
+            foreach (var commentBlueprint in blueprint.Comments)
             {
-                IssuePriority.High => 120,
-                IssuePriority.Medium => 90,
-                _ => 60
-            };
+                var commentCreatedUtc = CreateSeedTimestamp(commentBlueprint.DaysAgo, commentBlueprint.Hour, commentBlueprint.Minute);
+                var author = userByName[commentBlueprint.AuthorName];
+                comments.Add(new Comment
+                {
+                    Issue = issue,
+                    Author = author,
+                    Body = commentBlueprint.Body,
+                    CreatedUtc = commentCreatedUtc
+                });
 
-            worklogEntries.Add(new WorklogEntry
+                auditEvents.Add(new AuditEvent
+                {
+                    Issue = issue,
+                    Actor = author,
+                    EventType = "CommentAdded",
+                    Description = $"Added a comment to {issue.Key}.",
+                    CreatedUtc = commentCreatedUtc
+                });
+
+                if (commentCreatedUtc > issue.UpdatedUtc)
+                {
+                    issue.UpdatedUtc = commentCreatedUtc;
+                }
+            }
+
+            foreach (var worklogBlueprint in blueprint.Worklogs)
             {
-                Issue = issue,
-                User = worklogOwner,
-                StartAt = DateTime.UtcNow.AddDays(-1).Date.AddHours(9),
-                EndAt = DateTime.UtcNow.AddDays(-1).Date.AddHours(9).AddMinutes(baselineMinutes),
-                Note = $"Progress on {issue.Key}."
-            });
+                var startAt = CreateSeedDateTime(worklogBlueprint.DaysAgo, worklogBlueprint.StartHour, worklogBlueprint.StartMinute);
+                var endAt = startAt.AddMinutes(worklogBlueprint.DurationMinutes);
+                var createdWorklogUtc = new DateTimeOffset(endAt, TimeSpan.Zero);
+                var user = userByName[worklogBlueprint.UserName];
+
+                worklogEntries.Add(new WorklogEntry
+                {
+                    Issue = issue,
+                    User = user,
+                    StartAt = startAt,
+                    EndAt = endAt,
+                    Note = worklogBlueprint.Note,
+                    CreatedUtc = createdWorklogUtc,
+                    UpdatedUtc = createdWorklogUtc
+                });
+
+                auditEvents.Add(new AuditEvent
+                {
+                    Issue = issue,
+                    Actor = user,
+                    EventType = "WorklogAdded",
+                    Description = $"Logged {FormatDuration(worklogBlueprint.DurationMinutes)} on {startAt:dd MMM yyyy} from {startAt:HH:mm} to {endAt:HH:mm}.",
+                    CreatedUtc = createdWorklogUtc
+                });
+
+                if (createdWorklogUtc > issue.UpdatedUtc)
+                {
+                    issue.UpdatedUtc = createdWorklogUtc;
+                }
+            }
+
+            foreach (var auditBlueprint in blueprint.Audits)
+            {
+                var auditCreatedUtc = CreateSeedTimestamp(auditBlueprint.DaysAgo, auditBlueprint.Hour, auditBlueprint.Minute);
+                var actor = userByName[auditBlueprint.ActorName];
+                auditEvents.Add(new AuditEvent
+                {
+                    Issue = issue,
+                    Actor = actor,
+                    EventType = auditBlueprint.EventType,
+                    Description = auditBlueprint.Description,
+                    CreatedUtc = auditCreatedUtc
+                });
+
+                if (auditCreatedUtc > issue.UpdatedUtc)
+                {
+                    issue.UpdatedUtc = auditCreatedUtc;
+                }
+            }
         }
 
         dbContext.AddRange(tenant, project, todo, inProgress, done);
         dbContext.Users.AddRange(tenantUsers);
         dbContext.Issues.AddRange(issues);
+        dbContext.Comments.AddRange(comments);
         dbContext.WorklogEntries.AddRange(worklogEntries);
-        dbContext.AuditEvents.AddRange(issueCreatedAuditEvents);
+        dbContext.AuditEvents.AddRange(auditEvents);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -758,6 +818,14 @@ public sealed class WorkTrackingService(
                 "azure" => "#1f4566",
                 "backend" => "#6a3f22",
                 "architecture" => "#244b40",
+                "frontend" => "#375a7f",
+                "auth" => "#7a2338",
+                "multitenancy" => "#5b4b7a",
+                "worklog" => "#226b63",
+                "reports" => "#695d24",
+                "due-dates" => "#7a4f22",
+                "demo-data" => "#466027",
+                "ux" => "#7a2f5f",
                 _ => "#555f2a"
             }
         };
@@ -800,4 +868,258 @@ public sealed class WorkTrackingService(
         var remainder = minutes % 60;
         return remainder == 0 ? $"{hours}h" : $"{hours}h {remainder}m";
     }
+
+    private static DateTime CreateSeedDateTime(int daysAgo, int hour, int minute)
+    {
+        return DateTime.SpecifyKind(DateTime.UtcNow.Date.AddDays(-daysAgo).AddHours(hour).AddMinutes(minute), DateTimeKind.Unspecified);
+    }
+
+    private static DateTimeOffset CreateSeedTimestamp(int daysAgo, int hour, int minute)
+    {
+        return new DateTimeOffset(CreateSeedDateTime(daysAgo, hour, minute), TimeSpan.Zero);
+    }
+
+    private static IReadOnlyList<SeedIssueBlueprint> BuildDemoIssueBlueprints()
+    {
+        return
+        [
+            new SeedIssueBlueprint(
+                "JOU-1",
+                "Shape the self-referential Demo Company seed",
+                "Broaden the default dataset so the Demo Company project explains Joura through its own backlog, labels, due dates, comments, and worklogs.",
+                IssueType.Story,
+                IssuePriority.High,
+                5,
+                3,
+                "Done",
+                "Priya PM",
+                "Avery Architect",
+                ["demo-data", "architecture"],
+                [
+                    new SeedCommentBlueprint("Avery Architect", "The seed should be strong enough to demo the board, issue detail, reports, and due dates without manual prep.", 4, 10, 15),
+                    new SeedCommentBlueprint("Priya PM", "Agreed. Make the project describe Joura itself so the sample feels intentional instead of random.", 3, 14, 20)
+                ],
+                [
+                    new SeedWorklogBlueprint("Avery Architect", 4, 9, 0, 90, "Outlined the richer demo backlog."),
+                    new SeedWorklogBlueprint("Priya PM", 3, 13, 0, 60, "Reviewed the seeded issue narrative and priorities.")
+                ],
+                [
+                    new SeedAuditBlueprint("Avery Architect", "StatusChanged", "JOU-1 moved from To Do to In Progress.", 4, 11, 0),
+                    new SeedAuditBlueprint("Priya PM", "StatusChanged", "JOU-1 moved from In Progress to Done.", 3, 16, 0)
+                ]),
+            new SeedIssueBlueprint(
+                "JOU-2",
+                "Expand issue details with useful history",
+                "Ensure the issue detail page has enough seeded comments and audit events to demonstrate collaboration and traceability.",
+                IssueType.Task,
+                IssuePriority.High,
+                6,
+                5,
+                "Done",
+                "Avery Architect",
+                "Devon Developer",
+                ["backend", "demo-data"],
+                [
+                    new SeedCommentBlueprint("Devon Developer", "I added seed comments so the discussion timeline is not empty on first boot.", 5, 11, 10),
+                    new SeedCommentBlueprint("Quinn QA", "Please keep the wording realistic enough to feel like an actual project thread.", 4, 15, 35)
+                ],
+                [
+                    new SeedWorklogBlueprint("Devon Developer", 5, 10, 0, 120, "Seeded comments and matching audit history."),
+                    new SeedWorklogBlueprint("Quinn QA", 4, 15, 0, 45, "Reviewed issue detail timelines for realism.")
+                ],
+                [
+                    new SeedAuditBlueprint("Devon Developer", "StatusChanged", "JOU-2 moved from To Do to In Progress.", 5, 12, 30),
+                    new SeedAuditBlueprint("Avery Architect", "StatusChanged", "JOU-2 moved from In Progress to Done.", 4, 17, 0)
+                ]),
+            new SeedIssueBlueprint(
+                "JOU-3",
+                "Build weekly worklog planning and rescheduling",
+                "Support dragging across planner slots to create worklogs and dragging existing entries to reschedule them in the week view.",
+                IssueType.Story,
+                IssuePriority.High,
+                4,
+                2,
+                "In Progress",
+                "Priya PM",
+                "Devon Developer",
+                ["frontend", "worklog"],
+                [
+                    new SeedCommentBlueprint("Priya PM", "This should make the product feel more like a daily operating tool and less like a static tracker.", 3, 9, 45),
+                    new SeedCommentBlueprint("Devon Developer", "Planner selection and drag state are working, but the demo needs more seeded entries to show the pattern.", 2, 16, 15)
+                ],
+                [
+                    new SeedWorklogBlueprint("Devon Developer", 3, 9, 0, 90, "Implemented planner range selection."),
+                    new SeedWorklogBlueprint("Devon Developer", 2, 13, 0, 120, "Added drag-to-reschedule behaviour."),
+                    new SeedWorklogBlueprint("Quinn QA", 1, 15, 0, 30, "Checked overlaps and drag interactions.")
+                ],
+                [
+                    new SeedAuditBlueprint("Priya PM", "StatusChanged", "JOU-3 moved from To Do to In Progress.", 3, 10, 30)
+                ]),
+            new SeedIssueBlueprint(
+                "JOU-4",
+                "Refactor Worklog Search into Reports",
+                "Rename the worklog search surface to Reports, align the hero copy, and split filters from result tables for a clearer page structure.",
+                IssueType.Task,
+                IssuePriority.Medium,
+                3,
+                4,
+                "To Do",
+                "Priya PM",
+                "Devon Developer",
+                ["reports", "frontend"],
+                [
+                    new SeedCommentBlueprint("Priya PM", "Reports reads better than Worklog Search now that the page is turning into a reusable reporting surface.", 1, 11, 20)
+                ],
+                [
+                    new SeedWorklogBlueprint("Priya PM", 1, 10, 0, 30, "Captured the rename and layout goals.")
+                ],
+                []),
+            new SeedIssueBlueprint(
+                "JOU-5",
+                "Add due dates calendar for delivery planning",
+                "Expose issue due dates on a monthly calendar so teams can spot clustering and navigate deadlines quickly.",
+                IssueType.Story,
+                IssuePriority.Medium,
+                7,
+                6,
+                "Done",
+                "Avery Architect",
+                "Priya PM",
+                ["due-dates", "frontend"],
+                [
+                    new SeedCommentBlueprint("Priya PM", "The month view already helps explain why due dates matter in the seed project.", 6, 14, 0)
+                ],
+                [
+                    new SeedWorklogBlueprint("Priya PM", 6, 13, 0, 75, "Built and styled the due dates calendar."),
+                    new SeedWorklogBlueprint("Quinn QA", 5, 10, 30, 45, "Verified issue links and month navigation.")
+                ],
+                [
+                    new SeedAuditBlueprint("Priya PM", "StatusChanged", "JOU-5 moved from To Do to In Progress.", 6, 15, 0),
+                    new SeedAuditBlueprint("Avery Architect", "StatusChanged", "JOU-5 moved from In Progress to Done.", 5, 12, 0)
+                ]),
+            new SeedIssueBlueprint(
+                "JOU-6",
+                "Tighten tenant-aware authentication flows",
+                "Make login and current-user context feel explicit so Demo Company and Itsu Company clearly demonstrate multitenant isolation.",
+                IssueType.Task,
+                IssuePriority.High,
+                8,
+                1,
+                "Done",
+                "Avery Architect",
+                "Quinn QA",
+                ["auth", "multitenancy", "backend"],
+                [
+                    new SeedCommentBlueprint("Quinn QA", "Tenant switching is much easier to validate when the sample users belong to distinct companies.", 7, 9, 15),
+                    new SeedCommentBlueprint("Avery Architect", "Keep the login choices simple enough that the seed still feels approachable.", 6, 11, 0)
+                ],
+                [
+                    new SeedWorklogBlueprint("Quinn QA", 7, 9, 0, 60, "Validated tenant boundaries in auth flows."),
+                    new SeedWorklogBlueprint("Avery Architect", 6, 10, 0, 90, "Cleaned up current-user context and seed users.")
+                ],
+                [
+                    new SeedAuditBlueprint("Avery Architect", "StatusChanged", "JOU-6 moved from To Do to In Progress.", 7, 11, 0),
+                    new SeedAuditBlueprint("Quinn QA", "StatusChanged", "JOU-6 moved from In Progress to Done.", 6, 13, 0)
+                ]),
+            new SeedIssueBlueprint(
+                "JOU-7",
+                "Polish board interactions for day-to-day use",
+                "Keep drag-and-drop board interactions fast and clear so seeded issues can be moved without leaving the page.",
+                IssueType.Bug,
+                IssuePriority.Medium,
+                2,
+                7,
+                "In Progress",
+                "Priya PM",
+                "Quinn QA",
+                ["frontend", "ux"],
+                [
+                    new SeedCommentBlueprint("Quinn QA", "The board works, but the drop affordance could be more obvious on longer columns.", 1, 9, 40),
+                    new SeedCommentBlueprint("Devon Developer", "I can tune the active column treatment after the reports cleanup lands.", 0, 8, 50)
+                ],
+                [
+                    new SeedWorklogBlueprint("Quinn QA", 1, 9, 0, 50, "Tested drag/drop feedback on the board."),
+                    new SeedWorklogBlueprint("Devon Developer", 0, 8, 0, 40, "Tweaked board column states and ticket drag behaviour.")
+                ],
+                [
+                    new SeedAuditBlueprint("Priya PM", "StatusChanged", "JOU-7 moved from To Do to In Progress.", 1, 10, 30)
+                ])
+        ];
+    }
+
+    private static IReadOnlyList<SeedIssueBlueprint> BuildItsuIssueBlueprints()
+    {
+        return
+        [
+            new SeedIssueBlueprint(
+                "ITSU-1",
+                "Create customer onboarding flow",
+                "Build signup and onboarding screens for the portal.",
+                IssueType.Story,
+                IssuePriority.High,
+                4,
+                5,
+                "To Do",
+                "Nina Ninja",
+                "Paul Product",
+                ["frontend"],
+                [],
+                [new SeedWorklogBlueprint("Paul Product", 1, 10, 0, 45, "Outlined the onboarding flow.")],
+                []),
+            new SeedIssueBlueprint(
+                "ITSU-2",
+                "Implement account settings API",
+                "Add backend endpoints for profile and preference updates.",
+                IssueType.Task,
+                IssuePriority.Medium,
+                5,
+                9,
+                "In Progress",
+                "Paul Product",
+                "Mika Maker",
+                ["backend"],
+                [new SeedCommentBlueprint("Mika Maker", "Settings payload shape looks stable enough to continue the API work.", 2, 13, 0)],
+                [new SeedWorklogBlueprint("Mika Maker", 2, 13, 0, 90, "Built the first account settings endpoints.")],
+                [new SeedAuditBlueprint("Paul Product", "StatusChanged", "ITSU-2 moved from To Do to In Progress.", 2, 15, 0)]),
+            new SeedIssueBlueprint(
+                "ITSU-3",
+                "Enable audit export",
+                "Support CSV export for tenant-level audit trail.",
+                IssueType.Task,
+                IssuePriority.Low,
+                6,
+                15,
+                "Done",
+                "Nina Ninja",
+                "Mika Maker",
+                ["architecture"],
+                [],
+                [new SeedWorklogBlueprint("Mika Maker", 4, 9, 30, 60, "Added export formatting for audit records.")],
+                [new SeedAuditBlueprint("Nina Ninja", "StatusChanged", "ITSU-3 moved from In Progress to Done.", 3, 16, 0)])
+        ];
+    }
+
+    private sealed record SeedUser(string DisplayName, string Email, ProjectRole Role);
+
+    private sealed record SeedIssueBlueprint(
+        string Key,
+        string Title,
+        string Description,
+        IssueType Type,
+        IssuePriority Priority,
+        int CreatedDaysAgo,
+        int? DueDateOffsetDays,
+        string StatusName,
+        string ReporterName,
+        string? AssigneeName,
+        IReadOnlyList<string> Labels,
+        IReadOnlyList<SeedCommentBlueprint> Comments,
+        IReadOnlyList<SeedWorklogBlueprint> Worklogs,
+        IReadOnlyList<SeedAuditBlueprint> Audits);
+
+    private sealed record SeedCommentBlueprint(string AuthorName, string Body, int DaysAgo, int Hour, int Minute);
+
+    private sealed record SeedWorklogBlueprint(string UserName, int DaysAgo, int StartHour, int StartMinute, int DurationMinutes, string Note);
+
+    private sealed record SeedAuditBlueprint(string ActorName, string EventType, string Description, int DaysAgo, int Hour, int Minute);
 }
