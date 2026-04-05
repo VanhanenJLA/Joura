@@ -16,8 +16,8 @@ main {
 }
 
 .top-row {
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
     gap: 1rem;
     min-height: var(--layout-header-height);
@@ -25,6 +25,10 @@ main {
     border-bottom: 1px solid rgba(32, 58, 54, 0.16);
     backdrop-filter: blur(14px);
     background: rgba(244, 239, 229, 0.74);
+}
+
+.top-row-spacer {
+    min-width: 0;
 }
 
 .command-palette-trigger {
@@ -75,6 +79,14 @@ main {
     font-size: 0.92rem;
 }
 
+.top-row-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
 .content {
     padding: 2rem;
 }
@@ -86,10 +98,24 @@ main {
 
     .top-row {
         padding: 1rem 1.1rem;
+        grid-template-columns: 1fr;
     }
 
     .command-palette-trigger {
         width: 100%;
+    }
+
+    .top-row-spacer {
+        display: none;
+    }
+
+    .top-row-actions {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .top-row-actions > * {
+        flex: 1 1 auto;
     }
 }
 

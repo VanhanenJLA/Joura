@@ -19,6 +19,10 @@ else if (projects.Count == 0)
 }
 else
 {
+    <SectionContent SectionName="TopRowActions">
+        <button type="button" class="action-button" @onclick="OpenCreateIssueModal">Create issue</button>
+    </SectionContent>
+
     <section class="panel-card">
         <div class="panel-header">
             <div>
@@ -36,7 +40,6 @@ else
                         }
                     </InputSelect>
                 </label>
-                <button type="button" class="action-button" @onclick="OpenCreateIssueModal">Create issue</button>
             </div>
         </div>
     </section>

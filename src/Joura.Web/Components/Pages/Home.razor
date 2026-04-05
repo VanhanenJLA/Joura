@@ -10,6 +10,10 @@
 }
 else
 {
+    <SectionContent SectionName="TopRowActions">
+        <button class="action-button" type="button" @onclick="OpenCreateProjectModal">Create project</button>
+    </SectionContent>
+
     <section class="hero-card">
         <div>
             <p class="hero-kicker">Overview</p>
@@ -32,52 +36,23 @@ else
         </div>
     </section>
 
-    <section class="page-grid">
-        <div class="panel-card">
-            <div class="panel-header">
-                <div>
-                    <p class="panel-kicker">Projects</p>
-                    <h2>Tenant portfolio</h2>
-                </div>
-            </div>
-            <div class="project-grid">
-                @foreach (var project in overview.Projects)
-                {
-                    <a class="project-card" href="/board?projectId=@project.Id">
-                        <span class="project-key">@project.Key</span>
-                        <strong>@project.Name</strong>
-                        <span>@project.IssueCount issues</span>
-                        <span>@project.DoneIssueCount done</span>
-                    </a>
-                }
+    <section class="panel-card">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">Projects</p>
+                <h2>Tenant portfolio</h2>
             </div>
         </div>
-
-        <div class="panel-card">
-            <div class="panel-header">
-                <div>
-                    <p class="panel-kicker">Create</p>
-                    <h2>New project</h2>
-                </div>
-            </div>
-
-            <EditForm Model="projectForm" OnValidSubmit="CreateProjectAsync">
-                <div class="form-grid">
-                    <label>
-                        <span>Name</span>
-                        <InputText @bind-Value="projectForm.Name" />
-                    </label>
-                    <label>
-                        <span>Key</span>
-                        <InputText @bind-Value="projectForm.Key" />
-                    </label>
-                    <label class="full-width">
-                        <span>Description</span>
-                        <InputTextArea @bind-Value="projectForm.Description" />
-                    </label>
-                </div>
-                <button class="action-button" type="submit">Create project</button>
-            </EditForm>
+        <div class="project-grid">
+            @foreach (var project in overview.Projects)
+            {
+                <a class="project-card" href="/board?projectId=@project.Id">
+                    <span class="project-key">@project.Key</span>
+                    <strong>@project.Name</strong>
+                    <span>@project.IssueCount issues</span>
+                    <span>@project.DoneIssueCount done</span>
+                </a>
+            }
         </div>
     </section>
 
@@ -107,8 +82,46 @@ else
     </section>
 }
 
+@if (showCreateProjectModal)
+{
+    <div class="modal-backdrop" @onclick="CloseCreateProjectModal">
+        <section class="modal-panel panel-card" @onclick:stopPropagation="true">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Create</p>
+                    <h2>New project</h2>
+                </div>
+            </div>
+
+            <EditForm Model="projectForm" OnValidSubmit="CreateProjectAsync">
+                <div class="form-grid">
+                    <label>
+                        <span>Name</span>
+                        <InputText @bind-Value="projectForm.Name" />
+                    </label>
+                    <label>
+                        <span>Key</span>
+                        <InputText @bind-Value="projectForm.Key" />
+                    </label>
+                    <label class="full-width">
+                        <span>Description</span>
+                        <InputTextArea @bind-Value="projectForm.Description" />
+                    </label>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="action-button" type="submit" disabled="@isCreatingProject">Create project</button>
+                    <button class="action-button action-button-secondary" type="button" @onclick="CloseCreateProjectModal">Cancel</button>
+                </div>
+            </EditForm>
+        </section>
+    </div>
+}
+
 @code {
     private TenantOverviewDto? overview;
+    private bool isCreatingProject;
+    private bool showCreateProjectModal;
     private readonly CreateProjectForm projectForm = new();
 
     protected override async Task OnInitializedAsync()
@@ -116,18 +129,37 @@ else
         await ReloadAsync();
     }
 
+    private void OpenCreateProjectModal()
+    {
+        showCreateProjectModal = true;
+    }
+
+    private void CloseCreateProjectModal()
+    {
+        showCreateProjectModal = false;
+    }
+
     private async Task CreateProjectAsync()
     {
-        if (string.IsNullOrWhiteSpace(projectForm.Name) || string.IsNullOrWhiteSpace(projectForm.Key))
+        if (string.IsNullOrWhiteSpace(projectForm.Name) || string.IsNullOrWhiteSpace(projectForm.Key) || isCreatingProject)
         {
             return;
         }
 
-        await WorkTrackingService.CreateProjectAsync(new CreateProjectCommand(projectForm.Name, projectForm.Key, projectForm.Description ?? string.Empty));
-        projectForm.Name = string.Empty;
-        projectForm.Key = string.Empty;
-        projectForm.Description = string.Empty;
-        await ReloadAsync();
+        try
+        {
+            isCreatingProject = true;
+            await WorkTrackingService.CreateProjectAsync(new CreateProjectCommand(projectForm.Name, projectForm.Key, projectForm.Description ?? string.Empty));
+            projectForm.Name = string.Empty;
+            projectForm.Key = string.Empty;
+            projectForm.Description = string.Empty;
+            showCreateProjectModal = false;
+            await ReloadAsync();
+        }
+        finally
+        {
+            isCreatingProject = false;
+        }
     }
 
     private async Task ReloadAsync()
