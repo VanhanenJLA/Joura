@@ -54,7 +54,7 @@ var nameSqlServer = 'sql-${projectName}-${env}-${suffix}'
 var nameSqlDatabase = 'sqldb-${projectName}-${env}'
 
 var isFreePlan = appServiceSkuName == 'F1'
-var sqlConnectionString = 'Server=tcp:${sqlServer.name}.${environment().suffixes.sqlServerHostname},1433;Initial Catalog=${sqlDatabase.name};Persist Security Info=False;User ID=${sqlAdministratorLogin};Password=${sqlAdministratorPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
+var sqlConnectionString = 'Server=tcp:${sqlServer.name}${environment().suffixes.sqlServerHostname},1433;Initial Catalog=${sqlDatabase.name};Persist Security Info=False;User ID=${sqlAdministratorLogin};Password=${sqlAdministratorPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
   name: nameAppServicePlan

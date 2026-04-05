@@ -24,41 +24,46 @@
     }
     else
     {
-        <div class="page-grid">
-            @foreach (var tenant in tenants)
-            {
-                <section class="subpanel-card">
-                    <div class="panel-header">
-                        <div>
-                            <p class="panel-kicker">Tenant</p>
-                            <h2>@tenant.Name</h2>
-                        </div>
-                    </div>
-
-                    <div class="issue-list">
-                        @foreach (var user in tenant.Users)
-                        {
-                            <form method="post" action="/auth/login" class="issue-card">
-                                <input type="hidden" name="email" value="@user.Email" />
-                                <input type="hidden" name="returnUrl" value="@returnUrl" />
-                                <div class="issue-card-main">
-                                    <div>
-                                        <span class="issue-key">@user.Role</span>
-                                        <h3>@user.DisplayName</h3>
-                                    </div>
-                                </div>
-                                <div class="issue-card-meta">
-                                    <span>@user.Email</span>
-                                </div>
-                                <button type="submit" class="action-button">Continue as @user.DisplayName</button>
-                            </form>
-                        }
-                    </div>
-                </section>
-            }
-        </div>
+        <p class="body-copy">Choose a tenant below, then continue as one of its available users.</p>
     }
 </section>
+
+@if (tenants.Count > 0)
+{
+    <section class="page-grid">
+        @foreach (var tenant in tenants)
+        {
+            <section class="subpanel-card">
+                <div class="panel-header">
+                    <div>
+                        <p class="panel-kicker">Tenant</p>
+                        <h2>@tenant.Name</h2>
+                    </div>
+                </div>
+
+                <div class="issue-list">
+                    @foreach (var user in tenant.Users)
+                    {
+                        <form method="post" action="/auth/login" class="issue-card">
+                            <input type="hidden" name="email" value="@user.Email" />
+                            <input type="hidden" name="returnUrl" value="@returnUrl" />
+                            <div class="issue-card-main">
+                                <div>
+                                    <span class="issue-key">@user.Role</span>
+                                    <h3>@user.DisplayName</h3>
+                                </div>
+                            </div>
+                            <div class="issue-card-meta">
+                                <span>@user.Email</span>
+                            </div>
+                            <button type="submit" class="action-button">Continue as @user.DisplayName</button>
+                        </form>
+                    }
+                </div>
+            </section>
+        }
+    </section>
+}
 
 @code {
     private string returnUrl = "/";
