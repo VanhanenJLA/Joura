@@ -45,8 +45,8 @@ az deployment group create \
   --resource-group rg-joura-demo \
   --template-file infra/azure/main.bicep \
   --parameters \
-    namePrefix=joura \
-    webAppName=joura-demo-<unique-suffix> \
+    env=demo \
+    projectName=joura \
     sqlAdministratorLogin=jouraadmin \
     sqlAdministratorPassword='<strong-password>' \
     allowedClientIp='<your-public-ip>'
@@ -59,10 +59,19 @@ az deployment group create \
   --resource-group rg-joura-demo \
   --parameters infra/azure/main.demo.bicepparam \
   --template-file infra/azure/main.bicep \
-  --parameters \
-    webAppName=joura-demo-<unique-suffix> \
-    sqlAdministratorPassword='<strong-password>'
+  --parameters sqlAdministratorPassword='<strong-password>'
 ```
+
+## Naming
+
+The deployment derives names automatically:
+
+- App Service plan: `asp-<projectName>-<env>`
+- Web app: `app-<projectName>-<env>-<suffix>`
+- SQL server: `sql-<projectName>-<env>-<suffix>`
+- SQL database: `sqldb-<projectName>-<env>`
+
+The suffix is generated from subscription ID, resource group ID, project name, and environment so names stay stable for the same target resource group.
 
 ## Tear down
 

@@ -1,16 +1,22 @@
-@description('Azure region for all resources.')
+@description('Deployment location.')
 param location string = resourceGroup().location
 
-@description('Short prefix used for resource naming.')
+@description('Deployment environment.')
+@allowed([
+  'demo'
+  'prod'
+])
+param env string = 'demo'
+
+@description('Project name used in resource naming.')
 @minLength(3)
 @maxLength(12)
-param namePrefix string = 'joura'
+param projectName string = 'joura'
 
-@description('Globally unique Web App name.')
-param webAppName string = '${namePrefix}-${uniqueString(subscription().id, resourceGroup().id, 'web')}'
-
-@description('App Service plan name.')
-param appServicePlanName string = '${namePrefix}-plan'
+@description('Short unique suffix length for globally unique resource names.')
+@minValue(4)
+@maxValue(8)
+param suffixLength int = 5
 
 @description('App Service SKU. F1 is the free tier and best suited only for demo/dev usage.')
 @allowed([
@@ -18,12 +24,6 @@ param appServicePlanName string = '${namePrefix}-plan'
   'B1'
 ])
 param appServiceSkuName string = 'F1'
-
-@description('Logical SQL server name. Must be globally unique.')
-param sqlServerName string = '${namePrefix}-${uniqueString(subscription().id, resourceGroup().id, 'sql')}'
-
-@description('Database name for Joura.')
-param sqlDatabaseName string = 'joura'
 
 @description('SQL administrator login.')
 @minLength(1)
@@ -36,18 +36,28 @@ param sqlAdministratorPassword string
 @description('Optional client IPv4 address allowed through the SQL firewall, for example 203.0.113.10. Leave blank to skip.')
 param allowedClientIp string = ''
 
-@description('Tag values applied to all resources.')
-param tags object = {
+@description('Additional tag values applied to all resources.')
+param extraTags object = {}
+
+var unique = uniqueString(subscription().id, resourceGroup().id, projectName, env)
+var suffix = toLower(take(unique, suffixLength))
+var tags = union({
   app: 'Joura'
-  environment: 'demo'
+  environment: env
   managedBy: 'bicep'
-}
+  project: projectName
+}, extraTags)
+
+var nameAppServicePlan = 'asp-${projectName}-${env}'
+var nameWebApp = 'app-${projectName}-${env}-${suffix}'
+var nameSqlServer = 'sql-${projectName}-${env}-${suffix}'
+var nameSqlDatabase = 'sqldb-${projectName}-${env}'
 
 var isFreePlan = appServiceSkuName == 'F1'
 var sqlConnectionString = 'Server=tcp:${sqlServer.name}.${environment().suffixes.sqlServerHostname},1433;Initial Catalog=${sqlDatabase.name};Persist Security Info=False;User ID=${sqlAdministratorLogin};Password=${sqlAdministratorPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
-  name: appServicePlanName
+  name: nameAppServicePlan
   location: location
   kind: 'windows'
   sku: {
@@ -57,7 +67,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
 }
 
 resource webApp 'Microsoft.Web/sites@2023-01-01' = {
-  name: webAppName
+  name: nameWebApp
   location: location
   identity: {
     type: 'SystemAssigned'
@@ -90,7 +100,7 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
 }
 
 resource sqlServer 'Microsoft.Sql/servers@2023-08-01' = {
-  name: sqlServerName
+  name: nameSqlServer
   location: location
   tags: tags
   properties: {
@@ -104,7 +114,7 @@ resource sqlServer 'Microsoft.Sql/servers@2023-08-01' = {
 
 resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-08-01' = {
   parent: sqlServer
-  name: sqlDatabaseName
+  name: nameSqlDatabase
   location: location
   tags: tags
   sku: {
@@ -144,6 +154,7 @@ resource clientFirewallRule 'Microsoft.Sql/servers/firewallRules@2023-08-01' = i
   }
 }
 
+output appServicePlanName string = appServicePlan.name
 output webAppName string = webApp.name
 output webAppUrl string = 'https://${webApp.properties.defaultHostName}'
 output sqlServerFullyQualifiedDomainName string = sqlServer.properties.fullyQualifiedDomainName

@@ -1,9 +1,9 @@
 using './main.bicep'
 
-param namePrefix = 'joura'
+param env = 'demo'
+param projectName = 'joura'
 param appServiceSkuName = 'F1'
-param sqlDatabaseName = 'joura'
-param sqlAdministratorLogin = 'jouraadmin'
+param sqlAdministratorLogin = 'admin'
 
 // Fill these before deployment.
 param sqlAdministratorPassword = ''

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "10105096159601182202"
+      "templateHash": "17431214881819512775"
     }
   },
   "parameters": {
@@ -13,30 +13,36 @@
       "type": "string",
       "defaultValue": "[resourceGroup().location]",
       "metadata": {
-        "description": "Azure region for all resources."
+        "description": "Deployment location."
       }
     },
-    "namePrefix": {
+    "env": {
+      "type": "string",
+      "defaultValue": "demo",
+      "allowedValues": [
+        "demo",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Deployment environment."
+      }
+    },
+    "projectName": {
       "type": "string",
       "defaultValue": "joura",
       "minLength": 3,
       "maxLength": 12,
       "metadata": {
-        "description": "Short prefix used for resource naming."
+        "description": "Project name used in resource naming."
       }
     },
-    "webAppName": {
-      "type": "string",
-      "defaultValue": "[format('{0}-{1}', parameters('namePrefix'), uniqueString(subscription().id, resourceGroup().id, 'web'))]",
+    "suffixLength": {
+      "type": "int",
+      "defaultValue": 5,
+      "minValue": 4,
+      "maxValue": 8,
       "metadata": {
-        "description": "Globally unique Web App name."
-      }
-    },
-    "appServicePlanName": {
-      "type": "string",
-      "defaultValue": "[format('{0}-plan', parameters('namePrefix'))]",
-      "metadata": {
-        "description": "App Service plan name."
+        "description": "Short unique suffix length for globally unique resource names."
       }
     },
     "appServiceSkuName": {
@@ -48,20 +54,6 @@
       ],
       "metadata": {
         "description": "App Service SKU. F1 is the free tier and best suited only for demo/dev usage."
-      }
-    },
-    "sqlServerName": {
-      "type": "string",
-      "defaultValue": "[format('{0}-{1}', parameters('namePrefix'), uniqueString(subscription().id, resourceGroup().id, 'sql'))]",
-      "metadata": {
-        "description": "Logical SQL server name. Must be globally unique."
-      }
-    },
-    "sqlDatabaseName": {
-      "type": "string",
-      "defaultValue": "joura",
-      "metadata": {
-        "description": "Database name for Joura."
       }
     },
     "sqlAdministratorLogin": {
@@ -84,45 +76,48 @@
         "description": "Optional client IPv4 address allowed through the SQL firewall, for example 203.0.113.10. Leave blank to skip."
       }
     },
-    "tags": {
+    "extraTags": {
       "type": "object",
-      "defaultValue": {
-        "app": "Joura",
-        "environment": "demo",
-        "managedBy": "bicep"
-      },
+      "defaultValue": {},
       "metadata": {
-        "description": "Tag values applied to all resources."
+        "description": "Additional tag values applied to all resources."
       }
     }
   },
   "variables": {
+    "unique": "[uniqueString(subscription().id, resourceGroup().id, parameters('projectName'), parameters('env'))]",
+    "suffix": "[toLower(take(variables('unique'), parameters('suffixLength')))]",
+    "tags": "[union(createObject('app', 'Joura', 'environment', parameters('env'), 'managedBy', 'bicep', 'project', parameters('projectName')), parameters('extraTags'))]",
+    "nameAppServicePlan": "[format('asp-{0}-{1}', parameters('projectName'), parameters('env'))]",
+    "nameWebApp": "[format('app-{0}-{1}-{2}', parameters('projectName'), parameters('env'), variables('suffix'))]",
+    "nameSqlServer": "[format('sql-{0}-{1}-{2}', parameters('projectName'), parameters('env'), variables('suffix'))]",
+    "nameSqlDatabase": "[format('sqldb-{0}-{1}', parameters('projectName'), parameters('env'))]",
     "isFreePlan": "[equals(parameters('appServiceSkuName'), 'F1')]",
-    "sqlConnectionString": "[format('Server=tcp:{0}.{1},1433;Initial Catalog={2};Persist Security Info=False;User ID={3};Password={4};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;', parameters('sqlServerName'), environment().suffixes.sqlServerHostname, parameters('sqlDatabaseName'), parameters('sqlAdministratorLogin'), parameters('sqlAdministratorPassword'))]"
+    "sqlConnectionString": "[format('Server=tcp:{0}.{1},1433;Initial Catalog={2};Persist Security Info=False;User ID={3};Password={4};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;', variables('nameSqlServer'), environment().suffixes.sqlServerHostname, variables('nameSqlDatabase'), parameters('sqlAdministratorLogin'), parameters('sqlAdministratorPassword'))]"
   },
   "resources": [
     {
       "type": "Microsoft.Web/serverfarms",
       "apiVersion": "2023-01-01",
-      "name": "[parameters('appServicePlanName')]",
+      "name": "[variables('nameAppServicePlan')]",
       "location": "[parameters('location')]",
       "kind": "windows",
       "sku": {
         "name": "[parameters('appServiceSkuName')]"
       },
-      "tags": "[parameters('tags')]"
+      "tags": "[variables('tags')]"
     },
     {
       "type": "Microsoft.Web/sites",
       "apiVersion": "2023-01-01",
-      "name": "[parameters('webAppName')]",
+      "name": "[variables('nameWebApp')]",
       "location": "[parameters('location')]",
       "identity": {
         "type": "SystemAssigned"
       },
-      "tags": "[parameters('tags')]",
+      "tags": "[variables('tags')]",
       "properties": {
-        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('nameAppServicePlan'))]",
         "httpsOnly": true,
         "siteConfig": {
           "minTlsVersion": "1.2",
@@ -146,17 +141,17 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
-        "[resourceId('Microsoft.Sql/servers/databases', parameters('sqlServerName'), parameters('sqlDatabaseName'))]",
-        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+        "[resourceId('Microsoft.Web/serverfarms', variables('nameAppServicePlan'))]",
+        "[resourceId('Microsoft.Sql/servers/databases', variables('nameSqlServer'), variables('nameSqlDatabase'))]",
+        "[resourceId('Microsoft.Sql/servers', variables('nameSqlServer'))]"
       ]
     },
     {
       "type": "Microsoft.Sql/servers",
       "apiVersion": "2023-08-01",
-      "name": "[parameters('sqlServerName')]",
+      "name": "[variables('nameSqlServer')]",
       "location": "[parameters('location')]",
-      "tags": "[parameters('tags')]",
+      "tags": "[variables('tags')]",
       "properties": {
         "administratorLogin": "[parameters('sqlAdministratorLogin')]",
         "administratorLoginPassword": "[parameters('sqlAdministratorPassword')]",
@@ -168,9 +163,9 @@
     {
       "type": "Microsoft.Sql/servers/databases",
       "apiVersion": "2023-08-01",
-      "name": "[format('{0}/{1}', parameters('sqlServerName'), parameters('sqlDatabaseName'))]",
+      "name": "[format('{0}/{1}', variables('nameSqlServer'), variables('nameSqlDatabase'))]",
       "location": "[parameters('location')]",
-      "tags": "[parameters('tags')]",
+      "tags": "[variables('tags')]",
       "sku": {
         "name": "GP_S_Gen5_1",
         "tier": "GeneralPurpose",
@@ -189,51 +184,55 @@
         "zoneRedundant": false
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+        "[resourceId('Microsoft.Sql/servers', variables('nameSqlServer'))]"
       ]
     },
     {
       "type": "Microsoft.Sql/servers/firewallRules",
       "apiVersion": "2023-08-01",
-      "name": "[format('{0}/{1}', parameters('sqlServerName'), 'AllowAzureServices')]",
+      "name": "[format('{0}/{1}', variables('nameSqlServer'), 'AllowAzureServices')]",
       "properties": {
         "startIpAddress": "0.0.0.0",
         "endIpAddress": "0.0.0.0"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+        "[resourceId('Microsoft.Sql/servers', variables('nameSqlServer'))]"
       ]
     },
     {
       "condition": "[not(empty(parameters('allowedClientIp')))]",
       "type": "Microsoft.Sql/servers/firewallRules",
       "apiVersion": "2023-08-01",
-      "name": "[format('{0}/{1}', parameters('sqlServerName'), 'AllowNamedClientIp')]",
+      "name": "[format('{0}/{1}', variables('nameSqlServer'), 'AllowNamedClientIp')]",
       "properties": {
         "startIpAddress": "[parameters('allowedClientIp')]",
         "endIpAddress": "[parameters('allowedClientIp')]"
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+        "[resourceId('Microsoft.Sql/servers', variables('nameSqlServer'))]"
       ]
     }
   ],
   "outputs": {
+    "appServicePlanName": {
+      "type": "string",
+      "value": "[variables('nameAppServicePlan')]"
+    },
     "webAppName": {
       "type": "string",
-      "value": "[parameters('webAppName')]"
+      "value": "[variables('nameWebApp')]"
     },
     "webAppUrl": {
       "type": "string",
-      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('webAppName')), '2023-01-01').defaultHostName)]"
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', variables('nameWebApp')), '2023-01-01').defaultHostName)]"
     },
     "sqlServerFullyQualifiedDomainName": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Sql/servers', parameters('sqlServerName')), '2023-08-01').fullyQualifiedDomainName]"
+      "value": "[reference(resourceId('Microsoft.Sql/servers', variables('nameSqlServer')), '2023-08-01').fullyQualifiedDomainName]"
     },
     "sqlDatabaseName": {
       "type": "string",
-      "value": "[parameters('sqlDatabaseName')]"
+      "value": "[variables('nameSqlDatabase')]"
     }
   }
 }
