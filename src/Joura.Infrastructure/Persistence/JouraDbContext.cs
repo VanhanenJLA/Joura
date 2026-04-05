@@ -91,8 +91,6 @@ public sealed class JouraDbContext(DbContextOptions<JouraDbContext> options) : D
         modelBuilder.Entity<WorklogEntry>(entity =>
         {
             ConfigureWorklogEntry(entity);
-            entity.Property(x => x.StartAt).HasColumnType("timestamp without time zone");
-            entity.Property(x => x.EndAt).HasColumnType("timestamp without time zone");
             entity.HasIndex(x => new { x.IssueId, x.StartAt });
             entity.HasIndex(x => new { x.UserId, x.StartAt });
             entity.HasOne(x => x.Issue).WithMany(x => x.WorklogEntries).HasForeignKey(x => x.IssueId).OnDelete(DeleteBehavior.Cascade);
@@ -116,12 +114,16 @@ public sealed class JouraDbContext(DbContextOptions<JouraDbContext> options) : D
     {
         if (Database.IsNpgsql())
         {
+            entity.Property(x => x.StartAt).HasColumnType("timestamp without time zone");
+            entity.Property(x => x.EndAt).HasColumnType("timestamp without time zone");
             entity.ToTable(table => table.HasCheckConstraint("CK_WorklogEntries_Duration_Positive", "\"EndAt\" > \"StartAt\""));
             return;
         }
 
         if (Database.IsSqlServer())
         {
+            entity.Property(x => x.StartAt).HasColumnType("datetime2");
+            entity.Property(x => x.EndAt).HasColumnType("datetime2");
             entity.ToTable(table => table.HasCheckConstraint("CK_WorklogEntries_Duration_Positive", "[EndAt] > [StartAt]"));
         }
     }
