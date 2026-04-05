@@ -20,7 +20,7 @@ main {
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
-    min-height: 4.75rem;
+    min-height: var(--layout-header-height);
     padding: 1.1rem 2rem;
     border-bottom: 1px solid rgba(32, 58, 54, 0.16);
     backdrop-filter: blur(14px);
@@ -73,6 +73,9 @@ main {
 
 @media (min-width: 641px) {
     .sidebar {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
         width: 280px;
         height: 100vh;
         position: sticky;

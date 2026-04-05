@@ -19,6 +19,7 @@
     display: flex;
     align-items: center;
     gap: 0.95rem;
+    min-height: var(--layout-header-height);
     padding: 1.2rem 1rem 1rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -150,7 +151,8 @@
 
     .nav-scrollable {
         display: block;
-        height: calc(100vh - 4.75rem);
+        flex: 1 1 auto;
+        min-height: 0;
         overflow-y: auto;
     }
 }
