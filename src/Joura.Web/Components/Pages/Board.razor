@@ -19,10 +19,6 @@ else if (projects.Count == 0)
 }
 else
 {
-    <SectionContent SectionName="TopRowActions">
-        <button type="button" class="action-button" @onclick="OpenCreateIssueModal">Create issue</button>
-    </SectionContent>
-
     <section class="panel-card">
         <div class="panel-header">
             <div>
@@ -162,6 +158,9 @@ else
 }
 
 @code {
+    [SupplyParameterFromQuery(Name = "createIssue")]
+    public bool? CreateIssueQuery { get; set; }
+
     private List<ProjectReferenceDto> projects = [];
     private List<KanbanColumnDto> columns = [];
     private List<UserReferenceDto> users = [];
@@ -204,6 +203,21 @@ else
         }
     }
 
+    protected override void OnParametersSet()
+    {
+        if (projects.Count == 0)
+        {
+            return;
+        }
+
+        showCreateIssueModal = CreateIssueQuery == true;
+
+        if (showCreateIssueModal)
+        {
+            createIssueForm.ProjectId = selectedProjectId;
+        }
+    }
+
     private async Task LoadBoardAsync()
     {
         if (selectedProjectId == Guid.Empty)
@@ -214,15 +228,9 @@ else
         columns = (await WorkTrackingService.GetBoardAsync(selectedProjectId)).ToList();
     }
 
-    private void OpenCreateIssueModal()
-    {
-        createIssueForm.ProjectId = selectedProjectId;
-        showCreateIssueModal = true;
-    }
-
     private void CloseCreateIssueModal()
     {
-        showCreateIssueModal = false;
+        NavigationManager.NavigateTo($"/board?projectId={selectedProjectId}", replace: true);
     }
 
     private async Task CreateIssueAsync()
@@ -253,9 +261,9 @@ else
             createIssueForm.DueDate = null;
             createIssueForm.Type = IssueType.Task;
             createIssueForm.Priority = IssuePriority.Medium;
-            showCreateIssueModal = false;
             selectedProjectId = createIssueForm.ProjectId;
             await LoadBoardAsync();
+            NavigationManager.NavigateTo($"/board?projectId={selectedProjectId}", replace: true);
         }
         finally
         {

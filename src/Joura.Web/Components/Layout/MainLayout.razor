@@ -1,5 +1,4 @@
 ﻿@inherits LayoutComponentBase
-@rendermode InteractiveServer
 
 <div class="page">
     <div class="sidebar">
@@ -15,7 +14,7 @@
                 <span class="command-palette-shortcut" aria-hidden="true">/</span>
             </button>
             <div class="top-row-actions">
-                <SectionOutlet SectionName="TopRowActions" />
+                <a class="action-button" href="/board?createIssue=true">Create issue</a>
             </div>
         </div>
 

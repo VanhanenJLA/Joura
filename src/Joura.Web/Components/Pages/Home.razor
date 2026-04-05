@@ -1,6 +1,7 @@
 ﻿@page "/"
 @rendermode InteractiveServer
 @inject IWorkTrackingService WorkTrackingService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Home</PageTitle>
 
@@ -10,10 +11,6 @@
 }
 else
 {
-    <SectionContent SectionName="TopRowActions">
-        <button class="action-button" type="button" @onclick="OpenCreateProjectModal">Create project</button>
-    </SectionContent>
-
     <section class="hero-card">
         <div>
             <p class="hero-kicker">Overview</p>
@@ -42,6 +39,7 @@ else
                 <p class="panel-kicker">Projects</p>
                 <h2>Tenant portfolio</h2>
             </div>
+            <button class="action-button" type="button" @onclick="OpenCreateProjectModal">Create project</button>
         </div>
         <div class="project-grid">
             @foreach (var project in overview.Projects)
@@ -119,6 +117,9 @@ else
 }
 
 @code {
+    [SupplyParameterFromQuery(Name = "createProject")]
+    public bool? CreateProjectQuery { get; set; }
+
     private TenantOverviewDto? overview;
     private bool isCreatingProject;
     private bool showCreateProjectModal;
@@ -129,6 +130,11 @@ else
         await ReloadAsync();
     }
 
+    protected override void OnParametersSet()
+    {
+        showCreateProjectModal = CreateProjectQuery == true;
+    }
+
     private void OpenCreateProjectModal()
     {
         showCreateProjectModal = true;
@@ -137,6 +143,11 @@ else
     private void CloseCreateProjectModal()
     {
         showCreateProjectModal = false;
+
+        if (CreateProjectQuery == true)
+        {
+            NavigationManager.NavigateTo("/", replace: true);
+        }
     }
 
     private async Task CreateProjectAsync()
@@ -155,6 +166,11 @@ else
             projectForm.Description = string.Empty;
             showCreateProjectModal = false;
             await ReloadAsync();
+
+            if (CreateProjectQuery == true)
+            {
+                NavigationManager.NavigateTo("/", replace: true);
+            }
         }
         finally
         {
