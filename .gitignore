@@ -44,3 +44,5 @@ coverage/
 *.log
 logs/
 BenchmarkDotNet.Artifacts/
+
+/ops/main.json
