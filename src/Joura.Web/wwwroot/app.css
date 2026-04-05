@@ -1113,6 +1113,29 @@ section + section {
     white-space: nowrap;
 }
 
+.audit-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.audit-item-meta {
+    display: grid;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.audit-item-actor,
+.audit-item-timestamp {
+    color: var(--muted);
+    font-size: 0.84rem;
+}
+
+.audit-item-timestamp {
+    white-space: nowrap;
+}
+
 .worklog-row {
     display: flex;
     align-items: center;
@@ -1208,6 +1231,15 @@ section + section {
     }
 
     .comment-item-timestamp {
+        white-space: normal;
+    }
+
+    .audit-item-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .audit-item-timestamp {
         white-space: normal;
     }
 

@@ -168,25 +168,6 @@ else
         <div class="panel-card">
             <div class="panel-header">
                 <div>
-                    <p class="panel-kicker">Audit</p>
-                    <h2>History</h2>
-                </div>
-            </div>
-            <div class="timeline">
-                @foreach (var audit in issue.AuditTrail)
-                {
-                    <article class="timeline-item">
-                        <strong>@audit.EventType</strong>
-                        <span>@audit.CreatedUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</span>
-                        <p>@audit.ActorName: @audit.Description</p>
-                    </article>
-                }
-            </div>
-        </div>
-
-        <div class="panel-card">
-            <div class="panel-header">
-                <div>
                     <p class="panel-kicker">Time</p>
                     <h2>Worklog</h2>
                 </div>
@@ -219,6 +200,30 @@ else
                         {
                             <p>@entry.Note</p>
                         }
+                    </article>
+                }
+            </div>
+        </div>
+
+        <div class="panel-card">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Audit</p>
+                    <h2>History</h2>
+                </div>
+            </div>
+            <div class="timeline">
+                @foreach (var audit in issue.AuditTrail)
+                {
+                    <article class="timeline-item">
+                        <div class="audit-item-header">
+                            <div class="audit-item-meta">
+                                <strong>@audit.EventType</strong>
+                                <span class="audit-item-actor">@audit.ActorName</span>
+                            </div>
+                            <span class="audit-item-timestamp">@audit.CreatedUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</span>
+                        </div>
+                        <p>@audit.Description</p>
                     </article>
                 }
             </div>
