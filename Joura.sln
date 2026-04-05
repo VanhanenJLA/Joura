@@ -16,13 +16,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{3A5A3456-E
 		docs\README.md = docs\README.md
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "infra", "infra", "{14EF0A99-F8F6-4AA0-9BEF-CDB4401514E8}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ops", "ops", "{14EF0A99-F8F6-4AA0-9BEF-CDB4401514E8}"
 	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
 		compose.yaml = compose.yaml
-		infra\azure\README.md = infra\azure\README.md
-		infra\azure\main.bicep = infra\azure\main.bicep
-		infra\azure\main.dev.bicepparam = infra\azure\main.dev.bicepparam
-		infra\azure\main.json = infra\azure\main.json
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "azure", "azure", "{D2813570-53E2-4A2B-BF10-703F2E6B5701}"
+	ProjectSection(SolutionItems) = preProject
+		ops\azure\README.md = ops\azure\README.md
+		ops\azure\main.bicep = ops\azure\main.bicep
+		ops\azure\main.dev.bicepparam = ops\azure\main.dev.bicepparam
+		ops\azure\main.json = ops\azure\main.json
 	EndProjectSection
 EndProject
 Global
@@ -92,5 +97,6 @@ Global
 		{3E7822FB-3465-49D1-8417-623FF5033B5C} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{1A868C02-4D89-4EC8-B954-9F920CCBA3E8} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{EE839C45-D40D-4B2D-90BB-3957745635EB} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{D2813570-53E2-4A2B-BF10-703F2E6B5701} = {14EF0A99-F8F6-4AA0-9BEF-CDB4401514E8}
 	EndGlobalSection
 EndGlobal

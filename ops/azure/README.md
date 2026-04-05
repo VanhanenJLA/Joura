@@ -43,7 +43,7 @@ Deploy with inline parameters:
 ```bash
 az deployment group create \
   --resource-group rg-joura-dev \
-  --template-file infra/azure/main.bicep \
+  --template-file ops/azure/main.bicep \
   --parameters \
     env=dev \
     projectName=joura \
@@ -57,8 +57,8 @@ Or deploy with the parameter file:
 ```bash
 az deployment group create \
   --resource-group rg-joura-dev \
-  --parameters infra/azure/main.dev.bicepparam \
-  --template-file infra/azure/main.bicep \
+  --parameters ops/azure/main.dev.bicepparam \
+  --template-file ops/azure/main.bicep \
   --parameters sqlAdministratorPassword='<strong-password>'
 ```
 
