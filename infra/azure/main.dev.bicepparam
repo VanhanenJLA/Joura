@@ -1,6 +1,6 @@
 using './main.bicep'
 
-param env = 'demo'
+param env = 'dev'
 param projectName = 'joura'
 param appServiceSkuName = 'F1'
 param sqlAdministratorLogin = 'admin'

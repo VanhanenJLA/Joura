@@ -3,10 +3,10 @@ param location string = resourceGroup().location
 
 @description('Deployment environment.')
 @allowed([
-  'demo'
+  'dev'
   'prod'
 ])
-param env string = 'demo'
+param env string = 'dev'
 
 @description('Project name used in resource naming.')
 @minLength(3)

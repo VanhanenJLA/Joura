@@ -18,9 +18,9 @@
     },
     "env": {
       "type": "string",
-      "defaultValue": "demo",
+      "defaultValue": "dev",
       "allowedValues": [
-        "demo",
+        "dev",
         "prod"
       ],
       "metadata": {

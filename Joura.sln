@@ -12,12 +12,17 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Joura.Infrastructure", "src
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{3A5A3456-E875-4037-9242-024327D2F98C}"
 	ProjectSection(SolutionItems) = preProject
+		docs\architecture.md = docs\architecture.md
 		docs\README.md = docs\README.md
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "support", "support", "{14EF0A99-F8F6-4AA0-9BEF-CDB4401514E8}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "infra", "infra", "{14EF0A99-F8F6-4AA0-9BEF-CDB4401514E8}"
 	ProjectSection(SolutionItems) = preProject
 		compose.yaml = compose.yaml
+		infra\azure\README.md = infra\azure\README.md
+		infra\azure\main.bicep = infra\azure\main.bicep
+		infra\azure\main.dev.bicepparam = infra\azure\main.dev.bicepparam
+		infra\azure\main.json = infra\azure\main.json
 	EndProjectSection
 EndProject
 Global

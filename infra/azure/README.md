@@ -35,17 +35,17 @@ Current Joura application code now supports provider selection. For `SqlServer`,
 Create the resource group:
 
 ```bash
-az group create --name rg-joura-demo --location westeurope
+az group create --name rg-joura-dev --location westeurope
 ```
 
 Deploy with inline parameters:
 
 ```bash
 az deployment group create \
-  --resource-group rg-joura-demo \
+  --resource-group rg-joura-dev \
   --template-file infra/azure/main.bicep \
   --parameters \
-    env=demo \
+    env=dev \
     projectName=joura \
     sqlAdministratorLogin=jouraadmin \
     sqlAdministratorPassword='<strong-password>' \
@@ -56,8 +56,8 @@ Or deploy with the parameter file:
 
 ```bash
 az deployment group create \
-  --resource-group rg-joura-demo \
-  --parameters infra/azure/main.demo.bicepparam \
+  --resource-group rg-joura-dev \
+  --parameters infra/azure/main.dev.bicepparam \
   --template-file infra/azure/main.bicep \
   --parameters sqlAdministratorPassword='<strong-password>'
 ```
@@ -78,5 +78,5 @@ The suffix is generated from subscription ID, resource group ID, project name, a
 Delete the resource group:
 
 ```bash
-az group delete --name rg-joura-demo --yes --no-wait
+az group delete --name rg-joura-dev --yes --no-wait
 ```
