@@ -53,7 +53,13 @@ public static class DependencyInjection
                 options.UseNpgsql(connectionString);
                 break;
             case DatabaseProvider.SqlServer:
-                options.UseSqlServer(connectionString);
+                options.UseSqlServer(connectionString, sqlServerOptions =>
+                {
+                    sqlServerOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorNumbersToAdd: null);
+                });
                 break;
             default:
                 throw new InvalidOperationException($"Unsupported database provider '{databaseProvider}'.");
