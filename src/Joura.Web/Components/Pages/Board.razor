@@ -19,6 +19,18 @@ else if (projects.Count == 0)
 }
 else
 {
+    <SectionContent SectionName="TopRowActions">
+        <label class="compact-field board-top-row-selector">
+            <span>Project</span>
+            <InputSelect @bind-Value="selectedProjectId" @bind-Value:after="LoadBoardAsync">
+                @foreach (var project in projects)
+                {
+                    <option value="@project.Id">@project.Key - @project.Name</option>
+                }
+            </InputSelect>
+        </label>
+    </SectionContent>
+
     <section class="panel-card">
         <div class="panel-header">
             <div>
@@ -27,15 +39,6 @@ else
                 <p class="body-copy">Drag tickets between columns to update status.</p>
             </div>
             <div class="board-toolbar">
-                <label class="compact-field">
-                    <span>Project</span>
-                    <InputSelect @bind-Value="selectedProjectId" @bind-Value:after="LoadBoardAsync">
-                        @foreach (var project in projects)
-                        {
-                            <option value="@project.Id">@project.Key - @project.Name</option>
-                        }
-                    </InputSelect>
-                </label>
                 <button type="button" class="action-button" @onclick="OpenCreateIssueModal">Create issue</button>
             </div>
         </div>

@@ -51,8 +51,8 @@ Set `DatabaseProvider` and the matching connection string in configuration.
 - If you previously started the app before migrations existed, reset the local database once so migrations can take over cleanly:
 
 ```bash
-docker-compose down -v
-docker-compose up -d
+docker compose down -v
+docker compose up -d
 dotnet ef database update --project src/Joura.Infrastructure --startup-project src/Joura.Web
 ```
 

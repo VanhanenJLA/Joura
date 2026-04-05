@@ -13,12 +13,16 @@
                 <p class="eyebrow">Tenant</p>
                 <p class="top-title">@(tenantName ?? tenantKey ?? "Unknown tenant")</p>
             </div>
-            @if (!string.IsNullOrWhiteSpace(tenantKey))
-            {
-                <div class="top-meta">
-                    <span>@tenantKey</span>
-                </div>
-            }
+            <div class="top-row-actions">
+                <SectionOutlet SectionName="TopRowActions" />
+
+                @if (!string.IsNullOrWhiteSpace(tenantKey))
+                {
+                    <div class="top-meta">
+                        <span>@tenantKey</span>
+                    </div>
+                }
+            </div>
         </div>
 
         <article class="content">

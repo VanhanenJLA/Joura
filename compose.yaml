@@ -1,7 +1,6 @@
 services:
   postgres:
     image: postgres:16
-    container_name: joura-postgres
     environment:
       POSTGRES_DB: joura
       POSTGRES_USER: joura
