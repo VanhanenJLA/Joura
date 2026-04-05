@@ -20,10 +20,11 @@ main {
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
-    padding: 1.25rem 2rem;
+    min-height: 4.75rem;
+    padding: 1.1rem 2rem;
     border-bottom: 1px solid rgba(32, 58, 54, 0.16);
     backdrop-filter: blur(14px);
-    background: rgba(244, 239, 229, 0.78);
+    background: rgba(244, 239, 229, 0.74);
 }
 
 .eyebrow {
@@ -44,14 +45,6 @@ main {
     display: flex;
     flex-wrap: wrap;
     gap: 0.55rem;
-}
-
-.top-row-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 0.75rem;
 }
 
 .top-meta span {
@@ -75,11 +68,6 @@ main {
         padding: 1rem 1.1rem;
         flex-direction: column;
         align-items: flex-start;
-    }
-
-    .top-row-actions {
-        width: 100%;
-        justify-content: flex-start;
     }
 }
 
