@@ -135,8 +135,8 @@ else
                 </div>
             </div>
             <EditForm class="comment-form" Model="commentForm" OnValidSubmit="AddCommentAsync">
-                <div class="form-grid">
-                    <label class="full-width">
+                <div class="comment-form-row">
+                    <label class="comment-form-field">
                         <span>Comment</span>
                         <InputTextArea class="comment-input"
                                        placeholder="Add a comment..."
@@ -144,16 +144,21 @@ else
                                        oninput="this.style.height='auto'; this.style.height=this.scrollHeight + 'px';"
                                        @bind-Value="commentForm.Body" />
                     </label>
+                    <button class="action-button comment-submit-button" type="submit">Submit</button>
                 </div>
-                <button class="action-button" type="submit">Submit</button>
             </EditForm>
 
             <div class="timeline">
                 @foreach (var comment in issue.Comments)
                 {
                     <article class="timeline-item">
-                        <strong>@comment.AuthorName</strong>
-                        <span>@comment.CreatedUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</span>
+                        <div class="comment-item-header">
+                            <div class="comment-item-author">
+                                <InitialismAvatar Name="@comment.AuthorName" />
+                                <strong>@comment.AuthorName</strong>
+                            </div>
+                            <span class="comment-item-timestamp">@comment.CreatedUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</span>
+                        </div>
                         <p>@comment.Body</p>
                     </article>
                 }
@@ -185,9 +190,54 @@ else
                     <p class="panel-kicker">Time</p>
                     <h2>Worklog</h2>
                 </div>
-                <span class="selection-summary">Total @FormatDuration(worklogEntries.Sum(x => x.Minutes))</span>
+                <div class="worklog-panel-actions">
+                    <span class="selection-summary">Total @FormatDuration(worklogEntries.Sum(x => x.Minutes))</span>
+                    <button type="button" class="action-button" @onclick="OpenWorklogModal">Log time</button>
+                </div>
             </div>
-            <EditForm Model="worklogForm" OnValidSubmit="AddWorklogAsync">
+
+            <div class="timeline">
+                @foreach (var entry in worklogEntries)
+                {
+                    <article class="timeline-item">
+                        <div class="worklog-row">
+                            <div class="worklog-meta">
+                                <InitialismAvatar Name="@entry.UserName" />
+                                <strong>@entry.UserName</strong>
+                                <span class="pill worklog-duration-pill"
+                                      title="@($"{entry.StartAt:dd MMM yyyy HH:mm} - {entry.EndAt:HH:mm}")">
+                                    @FormatDuration(entry.Minutes)
+                                </span>
+                            </div>
+                            <button type="button"
+                                    class="action-button action-button-secondary worklog-delete"
+                                    @onclick="() => OpenWorklogModal(entry)">
+                                Edit
+                            </button>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(entry.Note))
+                        {
+                            <p>@entry.Note</p>
+                        }
+                    </article>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@if (showWorklogModal)
+{
+    <div class="modal-backdrop" @onclick="CloseWorklogModal">
+        <section class="modal-panel panel-card" @onclick:stopPropagation="true">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Time</p>
+                    <h2>@(editingWorklogId.HasValue ? "Edit time" : "Log time")</h2>
+                </div>
+            </div>
+
+            <EditForm Model="worklogForm" OnValidSubmit="SubmitWorklogAsync">
                 <div class="form-grid">
                     <label>
                         <span>Start</span>
@@ -202,34 +252,25 @@ else
                         <InputText @bind-Value="worklogForm.Note" />
                     </label>
                 </div>
-                <button type="submit" class="action-button" disabled="@isAddingWorklog">Log time</button>
-            </EditForm>
 
-            <div class="timeline">
-                @foreach (var entry in worklogEntries)
-                {
-                    <article class="timeline-item">
-                        <div class="worklog-row">
-                            <strong>@entry.UserName</strong>
-                            <span>@entry.StartAt.ToString("dd MMM yyyy HH:mm") - @entry.EndAt.ToString("HH:mm")</span>
-                        </div>
-                        <div class="worklog-row">
-                            <span class="pill">@FormatDuration(entry.Minutes)</span>
-                            <button type="button"
-                                    class="action-button action-button-secondary worklog-delete"
-                                    @onclick="() => DeleteWorklogAsync(entry.Id)">
-                                Delete
-                            </button>
-                        </div>
-                        @if (!string.IsNullOrWhiteSpace(entry.Note))
-                        {
-                            <p>@entry.Note</p>
-                        }
-                    </article>
-                }
-            </div>
-        </div>
-    </section>
+                <div class="modal-actions">
+                    @if (editingWorklogId.HasValue)
+                    {
+                        <button type="button"
+                                class="action-button action-button-secondary"
+                                @onclick="DeleteEditingWorklogAsync"
+                                disabled="@isAddingWorklog || isDeletingWorklog">
+                            Delete
+                        </button>
+                    }
+                    <button type="submit" class="action-button" disabled="@isAddingWorklog || isDeletingWorklog">
+                        @(editingWorklogId.HasValue ? "Save changes" : "Log time")
+                    </button>
+                    <button type="button" class="action-button action-button-secondary" @onclick="CloseWorklogModal">Cancel</button>
+                </div>
+            </EditForm>
+        </section>
+    </div>
 }
 
 @code {
@@ -245,6 +286,9 @@ else
     private bool isEditing;
     private bool isSavingEdit;
     private bool isAddingWorklog;
+    private bool isDeletingWorklog;
+    private bool showWorklogModal;
+    private Guid? editingWorklogId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -364,7 +408,31 @@ else
             : labels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
-    private async Task AddWorklogAsync()
+    private void OpenWorklogModal()
+    {
+        editingWorklogId = null;
+        worklogForm.StartAt = DateTime.Today.AddHours(9);
+        worklogForm.EndAt = DateTime.Today.AddHours(10);
+        worklogForm.Note = string.Empty;
+        showWorklogModal = true;
+    }
+
+    private void OpenWorklogModal(WorklogEntryDto entry)
+    {
+        editingWorklogId = entry.Id;
+        worklogForm.StartAt = entry.StartAt;
+        worklogForm.EndAt = entry.EndAt;
+        worklogForm.Note = entry.Note;
+        showWorklogModal = true;
+    }
+
+    private void CloseWorklogModal()
+    {
+        showWorklogModal = false;
+        editingWorklogId = null;
+    }
+
+    private async Task SubmitWorklogAsync()
     {
         if (issue is null || isAddingWorklog || worklogForm.EndAt <= worklogForm.StartAt)
         {
@@ -374,11 +442,25 @@ else
         try
         {
             isAddingWorklog = true;
-            await WorkTrackingService.AddWorklogAsync(new AddWorklogCommand(
-                issue.Id,
-                worklogForm.StartAt,
-                worklogForm.EndAt,
-                worklogForm.Note));
+            if (editingWorklogId.HasValue)
+            {
+                await WorkTrackingService.UpdateWorklogAsync(new UpdateWorklogCommand(
+                    editingWorklogId.Value,
+                    worklogForm.StartAt,
+                    worklogForm.EndAt,
+                    worklogForm.Note));
+            }
+            else
+            {
+                await WorkTrackingService.AddWorklogAsync(new AddWorklogCommand(
+                    issue.Id,
+                    worklogForm.StartAt,
+                    worklogForm.EndAt,
+                    worklogForm.Note));
+            }
+
+            showWorklogModal = false;
+            editingWorklogId = null;
             worklogForm.Note = string.Empty;
             worklogForm.StartAt = DateTime.Today.AddHours(9);
             worklogForm.EndAt = DateTime.Today.AddHours(10);
@@ -390,10 +472,28 @@ else
         }
     }
 
-    private async Task DeleteWorklogAsync(Guid worklogEntryId)
+    private async Task DeleteEditingWorklogAsync()
     {
-        await WorkTrackingService.DeleteWorklogAsync(worklogEntryId);
-        await ReloadAsync();
+        if (!editingWorklogId.HasValue || isAddingWorklog || isDeletingWorklog)
+        {
+            return;
+        }
+
+        try
+        {
+            isDeletingWorklog = true;
+            await WorkTrackingService.DeleteWorklogAsync(editingWorklogId.Value);
+            showWorklogModal = false;
+            editingWorklogId = null;
+            worklogForm.Note = string.Empty;
+            worklogForm.StartAt = DateTime.Today.AddHours(9);
+            worklogForm.EndAt = DateTime.Today.AddHours(10);
+            await ReloadAsync();
+        }
+        finally
+        {
+            isDeletingWorklog = false;
+        }
     }
 
     private static string FormatDuration(int minutes)
