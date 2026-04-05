@@ -72,6 +72,7 @@ public sealed class JouraDbContext(DbContextOptions<JouraDbContext> options) : D
             entity.Ignore(x => x.RowVersion);
             entity.Property(x => x.UpdatedUtc).IsConcurrencyToken();
             entity.HasIndex(x => new { x.ProjectId, x.Key }).IsUnique();
+            entity.HasOne(x => x.Status).WithMany().HasForeignKey(x => x.StatusId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Assignee).WithMany().HasForeignKey(x => x.AssigneeId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(x => x.Reporter).WithMany().HasForeignKey(x => x.ReporterId).OnDelete(DeleteBehavior.Restrict);
         });
@@ -90,6 +91,8 @@ public sealed class JouraDbContext(DbContextOptions<JouraDbContext> options) : D
         modelBuilder.Entity<WorklogEntry>(entity =>
         {
             ConfigureWorklogEntry(entity);
+            entity.Property(x => x.StartAt).HasColumnType("timestamp without time zone");
+            entity.Property(x => x.EndAt).HasColumnType("timestamp without time zone");
             entity.HasIndex(x => new { x.IssueId, x.StartAt });
             entity.HasIndex(x => new { x.UserId, x.StartAt });
             entity.HasOne(x => x.Issue).WithMany(x => x.WorklogEntries).HasForeignKey(x => x.IssueId).OnDelete(DeleteBehavior.Cascade);
