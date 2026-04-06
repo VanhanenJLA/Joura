@@ -2,6 +2,7 @@
 @page "/worklogs/search"
 @rendermode InteractiveServer
 @inject IWorkTrackingService WorkTrackingService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Reports</PageTitle>
 
@@ -64,6 +65,12 @@ else
             </div>
             <div class="issues-results-actions">
                 <span class="selection-summary">@selectedWorklogEntryIds.Count selected</span>
+                <button type="button"
+                        class="action-button action-button-secondary"
+                        @onclick="DownloadPdf"
+                        disabled="@(selectedWorklogEntryIds.Count == 0)">
+                    Download PDF
+                </button>
             </div>
         </div>
 
@@ -134,7 +141,7 @@ else
                         <div class="report-group-header">
                             <div>
                                 <p class="panel-kicker">Project</p>
-                                <h2>@projectGroup.ProjectName · @projectGroup.ProjectKey</h2>
+                                <h2>@projectGroup.ProjectName (@projectGroup.ProjectKey)</h2>
                             </div>
                             <span class="pill">Project total: @FormatDuration(projectGroup.TotalMinutes)</span>
                         </div>
@@ -308,6 +315,17 @@ else
     {
         var visibleWorklogIds = VisibleWorklogEntries.Select(x => x.Id).ToHashSet();
         selectedWorklogEntryIds.RemoveWhere(x => !visibleWorklogIds.Contains(x));
+    }
+
+    private void DownloadPdf()
+    {
+        if (selectedWorklogEntryIds.Count == 0)
+        {
+            return;
+        }
+
+        var query = string.Join("&", selectedWorklogEntryIds.Select(id => $"ids={Uri.EscapeDataString(id.ToString())}"));
+        NavigationManager.NavigateTo($"/reports/worklogs.pdf?{query}", forceLoad: true);
     }
 
     private sealed class WorklogFilterState

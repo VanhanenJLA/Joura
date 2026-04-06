@@ -481,6 +481,91 @@ public sealed class WorkTrackingService(
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<WorklogReportDto> GetWorklogReportAsync(IReadOnlyCollection<Guid> worklogEntryIds, CancellationToken cancellationToken = default)
+    {
+        if (worklogEntryIds.Count == 0)
+        {
+            return new WorklogReportDto([], 0, 0);
+        }
+
+        var tenantId = GetTenantIdOrThrow();
+        var worklogIdSet = worklogEntryIds.ToHashSet();
+
+        var entries = await dbContext.WorklogEntries
+            .AsNoTracking()
+            .Where(x => worklogIdSet.Contains(x.Id) && x.Issue.Project.TenantId == tenantId)
+            .Include(x => x.Issue)
+            .ThenInclude(x => x.Project)
+            .Include(x => x.User)
+            .OrderBy(x => x.Issue.Project.Name)
+            .ThenBy(x => x.Issue.Key)
+            .ThenBy(x => x.StartAt)
+            .ThenBy(x => x.EndAt)
+            .Select(x => new WorklogEntryDto(
+                x.Id,
+                x.Issue.ProjectId,
+                x.Issue.Project.Key,
+                x.Issue.Project.Name,
+                x.IssueId,
+                x.Issue.Key,
+                x.Issue.Title,
+                x.UserId,
+                x.User.DisplayName,
+                x.StartAt,
+                x.EndAt,
+                x.Note,
+                x.CreatedUtc))
+            .ToListAsync(cancellationToken);
+
+        var projectGroups = entries
+            .GroupBy(x => new { x.ProjectId, x.ProjectKey, x.ProjectName })
+            .OrderBy(x => x.Key.ProjectName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Key.ProjectKey, StringComparer.OrdinalIgnoreCase)
+            .Select(projectGroup =>
+            {
+                var issues = projectGroup
+                    .GroupBy(x => new { x.IssueId, x.IssueKey, x.IssueTitle })
+                    .OrderBy(x => x.Key.IssueKey, StringComparer.OrdinalIgnoreCase)
+                    .Select(issueGroup =>
+                    {
+                        var rows = issueGroup
+                            .OrderBy(x => x.StartAt)
+                            .ThenBy(x => x.EndAt)
+                            .Select(x => new WorklogReportRowDto(
+                                x.Id,
+                                x.UserName,
+                                x.Note,
+                                x.Minutes,
+                                x.StartAt,
+                                x.EndAt))
+                            .ToList();
+
+                        return new WorklogReportIssueDto(
+                            issueGroup.Key.IssueId,
+                            issueGroup.Key.IssueKey,
+                            issueGroup.Key.IssueTitle,
+                            rows,
+                            rows.Sum(x => x.Minutes),
+                            rows.Count);
+                    })
+                    .ToList();
+
+                return new WorklogReportProjectDto(
+                    projectGroup.Key.ProjectId,
+                    projectGroup.Key.ProjectKey,
+                    projectGroup.Key.ProjectName,
+                    issues,
+                    issues.Sum(x => x.TotalMinutes),
+                    issues.Sum(x => x.TotalEntryCount));
+            })
+            .ToList();
+
+        return new WorklogReportDto(
+            projectGroups,
+            projectGroups.Sum(x => x.TotalMinutes),
+            projectGroups.Sum(x => x.TotalEntryCount));
+    }
+
     public async Task<Guid> AddWorklogAsync(AddWorklogCommand command, CancellationToken cancellationToken = default)
     {
         var tenantId = GetTenantIdOrThrow();
@@ -572,64 +657,118 @@ public sealed class WorkTrackingService(
 
     public async Task SeedSampleDataAsync(CancellationToken cancellationToken = default)
     {
-        await SeedTenantAsync(
-            tenantKey: "DEMO",
-            tenantName: "Demo Company",
-            projectKey: "JOU",
-            projectName: "Joura Platform",
-            projectDescription: "Self-referential demo project tracking the features Joura has grown so far.",
-            users:
-            [
-                new SeedUser("Avery Architect", "avery@joura.local", ProjectRole.Admin),
-                new SeedUser("Priya PM", "priya@joura.local", ProjectRole.ProjectManager),
-                new SeedUser("Devon Developer", "devon@joura.local", ProjectRole.Member),
-                new SeedUser("Quinn QA", "quinn@joura.local", ProjectRole.Member)
-            ],
-            issueBlueprints: BuildDemoIssueBlueprints(),
-            cancellationToken);
+        IReadOnlyList<SeedTenantBlueprint> tenants =
+        [
+            new SeedTenantBlueprint(
+                "DEMO",
+                "Demo Company",
+                [
+                    new SeedUser("Avery Architect", "avery@joura.local", ProjectRole.Admin),
+                    new SeedUser("Priya PM", "priya@joura.local", ProjectRole.ProjectManager),
+                    new SeedUser("Devon Developer", "devon@joura.local", ProjectRole.Member),
+                    new SeedUser("Quinn QA", "quinn@joura.local", ProjectRole.Member)
+                ],
+                [
+                    new SeedProjectBlueprint(
+                        "JOU",
+                        "Joura Platform",
+                        "Self-referential demo project tracking the features Joura has grown so far.",
+                        BuildDemoIssueBlueprints()),
+                    new SeedProjectBlueprint(
+                        "SALE",
+                        "Sales Operations",
+                        "Demo sales pipeline project covering lead intake, qualification, forecasting, and handoff follow-through.",
+                        BuildDemoSalesIssueBlueprints())
+                ]),
+            new SeedTenantBlueprint(
+                "ITSU",
+                "Itsu Company",
+                [
+                    new SeedUser("Nina Ninja", "nina@joura.local", ProjectRole.Admin),
+                    new SeedUser("Paul Product", "paul@joura.local", ProjectRole.ProjectManager),
+                    new SeedUser("Mika Maker", "mika@joura.local", ProjectRole.Member)
+                ],
+                [
+                    new SeedProjectBlueprint(
+                        "ITSU",
+                        "Itsu Customer Portal",
+                        "Second tenant to validate isolation across authentication and data access.",
+                        BuildItsuIssueBlueprints())
+                ])
+        ];
 
-        await SeedTenantAsync(
-            tenantKey: "ITSU",
-            tenantName: "Itsu Company",
-            projectKey: "ITSU",
-            projectName: "Itsu Customer Portal",
-            projectDescription: "Second tenant to validate isolation across authentication and data access.",
-            users:
-            [
-                new SeedUser("Nina Ninja", "nina@joura.local", ProjectRole.Admin),
-                new SeedUser("Paul Product", "paul@joura.local", ProjectRole.ProjectManager),
-                new SeedUser("Mika Maker", "mika@joura.local", ProjectRole.Member)
-            ],
-            issueBlueprints: BuildItsuIssueBlueprints(),
-            cancellationToken);
+        foreach (var tenant in tenants)
+        {
+            await SeedTenantAsync(tenant, cancellationToken);
+        }
     }
 
     private async Task SeedTenantAsync(
-        string tenantKey,
-        string tenantName,
-        string projectKey,
-        string projectName,
-        string projectDescription,
-        IReadOnlyList<SeedUser> users,
-        IReadOnlyList<SeedIssueBlueprint> issueBlueprints,
+        SeedTenantBlueprint tenantBlueprint,
         CancellationToken cancellationToken)
     {
-        if (await dbContext.Tenants.AnyAsync(x => x.Key == tenantKey, cancellationToken))
+        var tenant = await dbContext.Tenants
+            .Include(x => x.Users)
+            .FirstOrDefaultAsync(x => x.Key == tenantBlueprint.Key, cancellationToken);
+
+        if (tenant is null)
+        {
+            tenant = new Tenant
+            {
+                Name = tenantBlueprint.Name,
+                Key = tenantBlueprint.Key
+            };
+
+            dbContext.Tenants.Add(tenant);
+        }
+
+        var usersChanged = false;
+        foreach (var userBlueprint in tenantBlueprint.Users)
+        {
+            if (tenant.Users.Any(x => x.Email.Equals(userBlueprint.Email, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            tenant.Users.Add(new AppUser
+            {
+                Tenant = tenant,
+                DisplayName = userBlueprint.DisplayName,
+                Email = userBlueprint.Email,
+                Role = userBlueprint.Role
+            });
+            usersChanged = true;
+        }
+
+        if (tenant.Id == Guid.Empty || usersChanged)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        var userByName = tenant.Users.ToDictionary(x => x.DisplayName, StringComparer.OrdinalIgnoreCase);
+        foreach (var projectBlueprint in tenantBlueprint.Projects)
+        {
+            await SeedProjectAsync(tenant, userByName, projectBlueprint, cancellationToken);
+        }
+    }
+
+    private async Task SeedProjectAsync(
+        Tenant tenant,
+        IReadOnlyDictionary<string, AppUser> userByName,
+        SeedProjectBlueprint projectBlueprint,
+        CancellationToken cancellationToken)
+    {
+        if (await dbContext.Projects.AnyAsync(x => x.TenantId == tenant.Id && x.Key == projectBlueprint.Key, cancellationToken))
         {
             return;
         }
 
-        var tenant = new Tenant { Name = tenantName, Key = tenantKey };
-        var tenantUsers = users
-            .Select(x => new AppUser { Tenant = tenant, DisplayName = x.DisplayName, Email = x.Email, Role = x.Role })
-            .ToList();
-
         var project = new Project
         {
             Tenant = tenant,
-            Name = projectName,
-            Key = projectKey,
-            Description = projectDescription
+            Name = projectBlueprint.Name,
+            Key = projectBlueprint.Key,
+            Description = projectBlueprint.Description
         };
 
         var todo = new IssueStatus { Project = project, Name = "To Do", Category = IssueStatusCategory.ToDo, SortOrder = 1, IsDefault = true };
@@ -643,17 +782,16 @@ public sealed class WorkTrackingService(
         };
 
         var labels = new Dictionary<string, Label>(StringComparer.OrdinalIgnoreCase);
-        foreach (var labelName in issueBlueprints.SelectMany(x => x.Labels).Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (var labelName in projectBlueprint.IssueBlueprints.SelectMany(x => x.Labels).Distinct(StringComparer.OrdinalIgnoreCase))
         {
             labels[labelName] = await GetOrCreateLabelAsync(labelName, cancellationToken);
         }
 
-        var userByName = tenantUsers.ToDictionary(x => x.DisplayName, StringComparer.OrdinalIgnoreCase);
         var issues = new List<Issue>();
         var comments = new List<Comment>();
         var auditEvents = new List<AuditEvent>();
         var worklogEntries = new List<WorklogEntry>();
-        foreach (var blueprint in issueBlueprints)
+        foreach (var blueprint in projectBlueprint.IssueBlueprints)
         {
             var createdUtc = CreateSeedTimestamp(blueprint.CreatedDaysAgo, 9, 0);
             var issue = new Issue
@@ -769,8 +907,7 @@ public sealed class WorkTrackingService(
             }
         }
 
-        dbContext.AddRange(tenant, project, todo, inProgress, done);
-        dbContext.Users.AddRange(tenantUsers);
+        dbContext.AddRange(project, todo, inProgress, done);
         dbContext.Issues.AddRange(issues);
         dbContext.Comments.AddRange(comments);
         dbContext.WorklogEntries.AddRange(worklogEntries);
@@ -1110,6 +1247,115 @@ public sealed class WorkTrackingService(
                 [new SeedAuditBlueprint("Nina Ninja", "StatusChanged", "ITSU-3 moved from In Progress to Done.", 3, 16, 0)])
         ];
     }
+
+    private static IReadOnlyList<SeedIssueBlueprint> BuildDemoSalesIssueBlueprints()
+    {
+        return
+        [
+            new SeedIssueBlueprint(
+                "SALE-1",
+                "Define lead qualification stages for inbound pipeline",
+                "Map the shared sales process from first contact through discovery so the team can track opportunities consistently.",
+                IssueType.Story,
+                IssuePriority.High,
+                6,
+                4,
+                "Done",
+                "Priya PM",
+                "Avery Architect",
+                ["sales", "process"],
+                [
+                    new SeedCommentBlueprint("Priya PM", "We need a small, believable pipeline rather than a generic CRM clone.", 5, 10, 20),
+                    new SeedCommentBlueprint("Avery Architect", "I kept the stages simple enough for demo boards and reports: new lead, qualified, proposal, won or lost.", 4, 15, 0)
+                ],
+                [
+                    new SeedWorklogBlueprint("Avery Architect", 5, 9, 0, 75, "Mapped the qualification stages and board states."),
+                    new SeedWorklogBlueprint("Priya PM", 4, 14, 0, 45, "Reviewed the sales workflow narrative.")
+                ],
+                [
+                    new SeedAuditBlueprint("Avery Architect", "StatusChanged", "SALE-1 moved from To Do to In Progress.", 5, 11, 0),
+                    new SeedAuditBlueprint("Priya PM", "StatusChanged", "SALE-1 moved from In Progress to Done.", 4, 16, 0)
+                ]),
+            new SeedIssueBlueprint(
+                "SALE-2",
+                "Track follow-up tasks for promising prospects",
+                "Capture the outreach and scheduling actions sales needs after a first conversation so opportunities do not stall.",
+                IssueType.Task,
+                IssuePriority.High,
+                5,
+                2,
+                "In Progress",
+                "Priya PM",
+                "Devon Developer",
+                ["sales", "workflow"],
+                [
+                    new SeedCommentBlueprint("Devon Developer", "The issue detail should show next-step notes so the prospect handoff feels concrete.", 4, 11, 30),
+                    new SeedCommentBlueprint("Quinn QA", "I want at least one in-progress sales issue so the second project looks active immediately.", 3, 13, 45)
+                ],
+                [
+                    new SeedWorklogBlueprint("Devon Developer", 4, 10, 0, 90, "Added follow-up field support to the sales story."),
+                    new SeedWorklogBlueprint("Quinn QA", 2, 15, 0, 35, "Checked issue detail flow for active prospects.")
+                ],
+                [
+                    new SeedAuditBlueprint("Priya PM", "StatusChanged", "SALE-2 moved from To Do to In Progress.", 4, 12, 0)
+                ]),
+            new SeedIssueBlueprint(
+                "SALE-3",
+                "Publish weekly pipeline forecast report",
+                "Summarize open opportunities and likely close windows so the reports page demonstrates something closer to revenue planning.",
+                IssueType.Story,
+                IssuePriority.Medium,
+                4,
+                7,
+                "To Do",
+                "Avery Architect",
+                "Priya PM",
+                ["sales", "reports"],
+                [
+                    new SeedCommentBlueprint("Priya PM", "This gives the demo a stronger business story than another engineering-only backlog item.", 3, 9, 50)
+                ],
+                [
+                    new SeedWorklogBlueprint("Priya PM", 3, 9, 0, 40, "Outlined the weekly forecast reporting requirements.")
+                ],
+                []),
+            new SeedIssueBlueprint(
+                "SALE-4",
+                "Verify won-deal handoff into onboarding",
+                "Show how a closed sale should create a clear operational handoff so the seed data tells a full customer journey.",
+                IssueType.Bug,
+                IssuePriority.Medium,
+                3,
+                6,
+                "Done",
+                "Quinn QA",
+                "Devon Developer",
+                ["sales", "handoff", "qa"],
+                [
+                    new SeedCommentBlueprint("Quinn QA", "A won deal should not disappear from the story once sales is done with it.", 2, 10, 5),
+                    new SeedCommentBlueprint("Devon Developer", "I linked the handoff expectation back to onboarding so the narrative spans both teams.", 1, 14, 25)
+                ],
+                [
+                    new SeedWorklogBlueprint("Devon Developer", 2, 9, 30, 80, "Tested the sales-to-onboarding handoff scenario."),
+                    new SeedWorklogBlueprint("Quinn QA", 1, 13, 0, 45, "Validated the closed-won follow-through.")
+                ],
+                [
+                    new SeedAuditBlueprint("Devon Developer", "StatusChanged", "SALE-4 moved from To Do to In Progress.", 2, 11, 0),
+                    new SeedAuditBlueprint("Quinn QA", "StatusChanged", "SALE-4 moved from In Progress to Done.", 1, 15, 0)
+                ])
+        ];
+    }
+
+    private sealed record SeedTenantBlueprint(
+        string Key,
+        string Name,
+        IReadOnlyList<SeedUser> Users,
+        IReadOnlyList<SeedProjectBlueprint> Projects);
+
+    private sealed record SeedProjectBlueprint(
+        string Key,
+        string Name,
+        string Description,
+        IReadOnlyList<SeedIssueBlueprint> IssueBlueprints);
 
     private sealed record SeedUser(string DisplayName, string Email, ProjectRole Role);
 

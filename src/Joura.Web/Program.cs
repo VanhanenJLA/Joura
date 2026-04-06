@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Joura.Application.Abstractions;
 using Joura.Web.Components;
+using Joura.Web.Services;
 using Joura.Infrastructure;
 using Joura.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
@@ -27,6 +28,7 @@ builder.Services.AddAuthorizationBuilder()
         .RequireAuthenticatedUser()
         .Build());
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<IWorklogReportPdfService, WorklogReportPdfService>();
 
 var app = builder.Build();
 
@@ -91,6 +93,34 @@ app.MapPost("/auth/logout", async (HttpContext httpContext) =>
 {
     await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.Redirect("/login");
+}).RequireAuthorization();
+
+app.MapGet("/reports/worklogs.pdf", async (
+    HttpContext httpContext,
+    IWorkTrackingService workTrackingService,
+    IWorklogReportPdfService worklogReportPdfService,
+    CancellationToken cancellationToken) =>
+{
+    var ids = httpContext.Request.Query["ids"]
+        .Select(value => Guid.TryParse(value, out var id) ? id : Guid.Empty)
+        .Where(id => id != Guid.Empty)
+        .Distinct()
+        .ToList();
+
+    if (ids.Count == 0)
+    {
+        return Results.BadRequest("At least one worklog row must be selected.");
+    }
+
+    var report = await workTrackingService.GetWorklogReportAsync(ids, cancellationToken);
+
+    if (report.TotalEntryCount == 0)
+    {
+        return Results.BadRequest("No matching worklog rows were found.");
+    }
+
+    var pdf = worklogReportPdfService.Generate(report);
+    return Results.File(pdf, "application/pdf", "worklog-report.pdf");
 }).RequireAuthorization();
 
 app.MapRazorComponents<App>()
