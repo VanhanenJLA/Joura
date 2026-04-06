@@ -1,0 +1,27 @@
+@rendermode InteractiveServer
+
+<CommandPalette @ref="commandPalette" />
+
+<button type="button"
+        class="command-palette-trigger"
+        aria-label="Quick search and command palette"
+        title="Quick search and command palette"
+        @onclick="OpenCommandPaletteAsync">
+    <span class="command-palette-icon" aria-hidden="true">/</span>
+    <span class="command-palette-copy">Search, jump to issue, or run a command</span>
+    <span class="command-palette-shortcut" aria-hidden="true">⌘K</span>
+</button>
+
+@code {
+    private CommandPalette? commandPalette;
+
+    private async Task OpenCommandPaletteAsync()
+    {
+        if (commandPalette is null)
+        {
+            return;
+        }
+
+        await commandPalette.OpenAsync();
+    }
+}

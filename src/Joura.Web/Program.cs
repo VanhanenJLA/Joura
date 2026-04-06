@@ -29,6 +29,7 @@ builder.Services.AddAuthorizationBuilder()
         .Build());
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<IWorklogReportPdfService, WorklogReportPdfService>();
+builder.Services.AddScoped<CommandPaletteService>();
 
 var app = builder.Build();
 

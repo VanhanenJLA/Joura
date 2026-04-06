@@ -1,0 +1,233 @@
+@implements IAsyncDisposable
+@inject CommandPaletteService CommandPaletteService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+
+@if (isOpen)
+{
+    <div class="command-palette-overlay" @onclick="CloseAsync">
+        <section class="command-palette-dialog panel-card"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-label="Command palette"
+                 @onclick:stopPropagation="true">
+            <div class="command-palette-search">
+                <span class="command-palette-search-icon" aria-hidden="true">/</span>
+                <input @ref="searchInput"
+                       class="command-palette-input"
+                       type="text"
+                       placeholder="Search pages, actions, or issues"
+                       value="@searchText"
+                       @oninput="HandleInputChanged" />
+            </div>
+
+            @if (visibleCommands.Count == 0)
+            {
+                <p class="command-palette-empty">No commands found.</p>
+            }
+            else
+            {
+                <div class="command-palette-results" role="listbox" aria-label="Commands">
+                    @for (var index = 0; index < visibleCommands.Count; index++)
+                    {
+                        var command = visibleCommands[index];
+                        <button type="button"
+                                class="command-palette-result @(selectedIndex == index ? "command-palette-result-active" : string.Empty)"
+                                role="option"
+                                aria-selected="@(selectedIndex == index)"
+                                @onclick="() => ExecuteAsync(command)">
+                            <span class="command-palette-result-icon" aria-hidden="true">@command.Icon</span>
+                            <span class="command-palette-result-body">
+                                <strong>@command.Title</strong>
+                                @if (!string.IsNullOrWhiteSpace(command.Subtitle))
+                                {
+                                    <span>@command.Subtitle</span>
+                                }
+                            </span>
+                            <span class="command-palette-result-group">@command.Group</span>
+                        </button>
+                    }
+                </div>
+            }
+        </section>
+    </div>
+}
+
+@code {
+    private const int MaxVisibleCommands = 10;
+
+    private readonly List<CommandPaletteItem> visibleCommands = [];
+    private DotNetObjectReference<CommandPalette>? dotNetReference;
+    private IJSObjectReference? module;
+    private ElementReference searchInput;
+    private string searchText = string.Empty;
+    private bool isOpen;
+    private int selectedIndex;
+    private CancellationTokenSource? searchCancellationTokenSource;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetReference = DotNetObjectReference.Create(this);
+            module = await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./commandPalette.js");
+            await module.InvokeVoidAsync("initialize", dotNetReference);
+            await RefreshCommandsAsync();
+            return;
+        }
+
+        if (isOpen)
+        {
+            await searchInput.FocusAsync();
+            if (module is not null)
+            {
+                await module.InvokeVoidAsync("setInputValue", searchInput, searchText);
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task ToggleAsync()
+    {
+        isOpen = !isOpen;
+        if (!isOpen)
+        {
+            searchText = string.Empty;
+        }
+
+        await RefreshCommandsAsync();
+        await NotifyOpenStateChangedAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task CloseFromShortcutAsync()
+    {
+        if (!isOpen)
+        {
+            return;
+        }
+
+        await CloseAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task MoveSelectionAsync(int delta)
+    {
+        if (!isOpen || visibleCommands.Count == 0)
+        {
+            return;
+        }
+
+        selectedIndex = (selectedIndex + delta + visibleCommands.Count) % visibleCommands.Count;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task ExecuteSelectionAsync()
+    {
+        if (!isOpen || visibleCommands.Count == 0 || selectedIndex < 0 || selectedIndex >= visibleCommands.Count)
+        {
+            return;
+        }
+
+        await ExecuteAsync(visibleCommands[selectedIndex]);
+    }
+
+    public async Task OpenAsync()
+    {
+        if (isOpen)
+        {
+            return;
+        }
+
+        isOpen = true;
+        await RefreshCommandsAsync();
+        await NotifyOpenStateChangedAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleInputChanged(ChangeEventArgs args)
+    {
+        searchText = args.Value?.ToString() ?? string.Empty;
+        await RefreshCommandsAsync();
+    }
+
+    private async Task RefreshCommandsAsync()
+    {
+        searchCancellationTokenSource?.Cancel();
+        searchCancellationTokenSource?.Dispose();
+        searchCancellationTokenSource = new CancellationTokenSource();
+        var cancellationToken = searchCancellationTokenSource.Token;
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                await Task.Delay(120, cancellationToken);
+            }
+
+            var commands = await CommandPaletteService.SearchAsync(searchText, cancellationToken);
+            visibleCommands.Clear();
+            visibleCommands.AddRange(commands.Take(MaxVisibleCommands));
+            selectedIndex = visibleCommands.Count == 0 ? -1 : 0;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ExecuteAsync(CommandPaletteItem command)
+    {
+        searchText = string.Empty;
+        isOpen = false;
+
+        switch (command.Kind)
+        {
+            case CommandPaletteItemKind.Navigate:
+            case CommandPaletteItemKind.OpenCreateFlow:
+            case CommandPaletteItemKind.OpenIssue:
+                NavigationManager.NavigateTo(command.Target);
+                break;
+            default:
+                throw new InvalidOperationException($"Unsupported command kind: {command.Kind}.");
+        }
+
+        await RefreshCommandsAsync();
+        await NotifyOpenStateChangedAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CloseAsync()
+    {
+        searchText = string.Empty;
+        isOpen = false;
+        await RefreshCommandsAsync();
+        await NotifyOpenStateChangedAsync();
+    }
+
+    private async Task NotifyOpenStateChangedAsync()
+    {
+        if (module is not null)
+        {
+            await module.InvokeVoidAsync("setOpenState", isOpen);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        searchCancellationTokenSource?.Cancel();
+        searchCancellationTokenSource?.Dispose();
+
+        if (module is not null)
+        {
+            await module.InvokeVoidAsync("dispose");
+            await module.DisposeAsync();
+        }
+
+        dotNetReference?.Dispose();
+    }
+}
