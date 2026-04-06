@@ -5,9 +5,9 @@
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding: 6rem 1rem 2rem;
+    padding: 3rem 1rem 2rem;
     background: rgba(19, 37, 34, 0.28);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(3px);
 }
 
 .command-palette-dialog {
@@ -15,6 +15,7 @@
     padding: 0;
     overflow: hidden;
     border: 1px solid rgba(32, 58, 54, 0.12);
+    background: rgba(249, 244, 236, 0.98);
     box-shadow: 0 24px 80px rgba(19, 37, 34, 0.22);
 }
 
