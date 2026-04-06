@@ -411,6 +411,9 @@ public sealed class WorkTrackingService(
             .ThenByDescending(x => x.CreatedUtc)
             .Select(x => new WorklogEntryDto(
                 x.Id,
+                x.Issue.ProjectId,
+                x.Issue.Project.Key,
+                x.Issue.Project.Name,
                 x.IssueId,
                 x.Issue.Key,
                 x.Issue.Title,
@@ -463,6 +466,9 @@ public sealed class WorkTrackingService(
             .ThenByDescending(x => x.CreatedUtc)
             .Select(x => new WorklogEntryDto(
                 x.Id,
+                x.Issue.ProjectId,
+                x.Issue.Project.Key,
+                x.Issue.Project.Name,
                 x.IssueId,
                 x.Issue.Key,
                 x.Issue.Title,

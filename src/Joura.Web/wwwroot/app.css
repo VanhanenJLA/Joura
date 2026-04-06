@@ -421,6 +421,60 @@ section + section {
     border-bottom: none;
 }
 
+.report-groups {
+    display: grid;
+    gap: 1rem;
+}
+
+.report-project-group {
+    display: grid;
+    gap: 1rem;
+}
+
+.report-issue-groups {
+    display: grid;
+    gap: 1.35rem;
+}
+
+.report-issue-group {
+    display: grid;
+    gap: 0;
+}
+
+.report-group-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.report-group-header h3,
+.report-group-header h4 {
+    margin: 0.18rem 0 0;
+}
+
+.report-issue-group .report-group-header {
+    align-items: center;
+    margin-bottom: 0.05rem;
+}
+
+.report-issue-group .panel-kicker {
+    margin-bottom: 0.08rem;
+}
+
+.report-issue-group .report-group-header h4 {
+    margin-top: 0;
+}
+
+.report-issue-key {
+    color: var(--muted);
+}
+
+.report-rows-table {
+    min-width: 760px;
+}
+
 .status-pill,
 .priority-pill {
     display: inline-flex;

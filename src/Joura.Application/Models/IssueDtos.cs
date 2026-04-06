@@ -58,6 +58,9 @@ public sealed record LabelDto(Guid Id, string Name, string Color);
 
 public sealed record WorklogEntryDto(
     Guid Id,
+    Guid ProjectId,
+    string ProjectKey,
+    string ProjectName,
     Guid IssueId,
     string IssueKey,
     string IssueTitle,

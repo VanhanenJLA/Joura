@@ -16,6 +16,7 @@ else
             <div>
                 <p class="panel-kicker">Worklogs</p>
                 <h1>Search</h1>
+                <p class="body-copy">Filter worklog rows, select the entries you need, and build a grouped report from the current result set.</p>
             </div>
         </div>
 
@@ -106,6 +107,83 @@ else
             </QuickGrid>
         </div>
     </section>
+
+    <section class="panel-card">
+        <div class="panel-header">
+            <div>
+                <p class="panel-kicker">Report</p>
+                <h2>Selected worklog report</h2>
+                <p class="body-copy">Grouped by project then by issue.</p>
+            </div>
+            <div class="issues-results-actions">
+                <span class="selection-summary">@SelectedWorklogEntries.Count rows</span>
+                <span class="pill">@FormatDuration(SelectedTotalMinutes)</span>
+            </div>
+        </div>
+
+        @if (SelectedWorklogEntries.Count == 0)
+        {
+            <p class="empty-state">Select worklog rows to build a report.</p>
+        }
+        else
+        {
+            <div class="report-groups">
+                @foreach (var projectGroup in SelectedReportProjects)
+                {
+                    <section class="subpanel-card report-project-group">
+                        <div class="report-group-header">
+                            <div>
+                                <p class="panel-kicker">Project</p>
+                                <h2>@projectGroup.ProjectName · @projectGroup.ProjectKey</h2>
+                            </div>
+                            <span class="pill">Project total: @FormatDuration(projectGroup.TotalMinutes)</span>
+                        </div>
+
+                        <div class="report-issue-groups">
+                            <p class="panel-kicker">Issues</p>
+                            @foreach (var issueGroup in projectGroup.Issues)
+                            {
+                                <div class="report-issue-group">
+                                    <div class="report-group-header">
+                                        <div>
+                                            <h4>
+                                                <a class="text-link" href="/issues/@issueGroup.IssueId">
+                                                    <span class="report-issue-key">@($"{issueGroup.IssueKey}:")</span>&nbsp;@issueGroup.IssueTitle
+                                                </a>
+                                            </h4>
+                                        </div>
+                                        <span class="pill">Issue total: @FormatDuration(issueGroup.TotalMinutes)</span>
+                                    </div>
+
+                                    <div class="issues-grid-scroll">
+                                        <table class="issues-grid-table report-rows-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Logger</th>
+                                                    <th>Duration</th>
+                                                    <th>Note</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var row in issueGroup.Rows)
+                                                {
+                                                    <tr>
+                                                        <td>@row.UserName</td>
+                                                        <td>@FormatDuration(row.Minutes)</td>
+                                                        <td>@(string.IsNullOrWhiteSpace(row.Note) ? "-" : row.Note)</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </section>
+                }
+            </div>
+        }
+    </section>
 }
 
 @code {
@@ -135,6 +213,37 @@ else
 
     private bool AreAllVisibleSelected => VisibleWorklogEntries.Count > 0
         && VisibleWorklogEntries.All(x => selectedWorklogEntryIds.Contains(x.Id));
+
+    private List<WorklogEntryDto> SelectedWorklogEntries => VisibleWorklogEntries
+        .Where(entry => selectedWorklogEntryIds.Contains(entry.Id))
+        .OrderBy(entry => entry.ProjectKey, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(entry => entry.IssueKey, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(entry => entry.StartAt)
+        .ThenBy(entry => entry.EndAt)
+        .ToList();
+
+    private int SelectedTotalMinutes => SelectedWorklogEntries.Sum(x => x.Minutes);
+
+    private List<ProjectReportGroup> SelectedReportProjects => SelectedWorklogEntries
+        .GroupBy(entry => new { entry.ProjectId, entry.ProjectKey, entry.ProjectName })
+        .OrderBy(group => group.Key.ProjectKey, StringComparer.OrdinalIgnoreCase)
+        .Select(group => new ProjectReportGroup(
+            group.Key.ProjectId,
+            group.Key.ProjectKey,
+            group.Key.ProjectName,
+            group.Sum(entry => entry.Minutes),
+            group.GroupBy(entry => new { entry.IssueId, entry.IssueKey, entry.IssueTitle })
+                .OrderBy(issueGroup => issueGroup.Key.IssueKey, StringComparer.OrdinalIgnoreCase)
+                .Select(issueGroup => new IssueReportGroup(
+                    issueGroup.Key.IssueId,
+                    issueGroup.Key.IssueKey,
+                    issueGroup.Key.IssueTitle,
+                    issueGroup.Sum(entry => entry.Minutes),
+                    issueGroup.OrderBy(entry => entry.StartAt)
+                        .ThenBy(entry => entry.EndAt)
+                        .ToList()))
+                .ToList()))
+        .ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -208,6 +317,20 @@ else
         public DateTime? StartAt { get; set; }
         public DateTime? EndAt { get; set; }
     }
+
+    private sealed record IssueReportGroup(
+        Guid IssueId,
+        string IssueKey,
+        string IssueTitle,
+        int TotalMinutes,
+        IReadOnlyList<WorklogEntryDto> Rows);
+
+    private sealed record ProjectReportGroup(
+        Guid ProjectId,
+        string ProjectKey,
+        string ProjectName,
+        int TotalMinutes,
+        IReadOnlyList<IssueReportGroup> Issues);
 
     private static string FormatDuration(int minutes)
     {
