@@ -72,7 +72,7 @@ public sealed record WorklogEntryDto(
     public int Minutes => (int)(EndAt - StartAt).TotalMinutes;
 }
 
-public sealed record WorklogFilter(Guid? ProjectId, Guid? AssigneeId, IssueStatusCategory? Category);
+public sealed record WorklogFilter(Guid? ProjectId, Guid? LoggerId, DateTime? StartAt, DateTime? EndAt);
 
 public sealed record KanbanColumnDto(Guid StatusId, string StatusName, IssueStatusCategory Category, IReadOnlyList<IssueSummaryDto> Issues);
 

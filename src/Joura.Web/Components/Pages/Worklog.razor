@@ -225,7 +225,7 @@
                 return;
             }
 
-            var entries = await WorkTrackingService.GetWorklogEntriesAsync(new WorklogFilter(null, currentUserId, null));
+            var entries = await WorkTrackingService.GetWorklogEntriesAsync(new WorklogFilter(null, currentUserId, null, null));
             foreach (var entry in entries.Where(x => x.UserId == currentUserId.Value))
             {
                 if (!worklogByDate.TryGetValue(entry.LoggedDate, out var dayEntries))

@@ -1,6 +1,7 @@
 @page "/issues"
 @rendermode InteractiveServer
 @inject IWorkTrackingService WorkTrackingService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Issues</PageTitle>
 
@@ -81,7 +82,15 @@ else
                 <p class="panel-kicker">Results</p>
                 <h2>@issues.Count issues</h2>
             </div>
-            <span class="selection-summary">@selectedIssueIds.Count selected</span>
+            <div class="issues-results-actions">
+                <span class="selection-summary">@selectedIssueIds.Count selected</span>
+                <button type="button"
+                        class="action-button action-button-secondary"
+                        @onclick="OpenBulkActionsModalAsync"
+                        disabled="@(selectedIssueIds.Count == 0)">
+                    Bulk actions
+                </button>
+            </div>
         </div>
 
         <div class="issues-grid-scroll">
@@ -106,19 +115,19 @@ else
                 <TemplateColumn Title="Title" SortBy="SortByTitle">
                     <a class="text-link" href="/issues/@context.Id">@context.Title</a>
                 </TemplateColumn>
-                <TemplateColumn Title="Project" SortBy="SortByProject">
-                    <span>@context.ProjectKey</span>
+                <TemplateColumn Title="Assignee" SortBy="SortByAssignee">
+                    <InitialismAvatar Name="@context.AssigneeName" />
                 </TemplateColumn>
-                <TemplateColumn Title="Status" SortBy="SortByStatus">
-                    <span class="status-pill @GetStatusPillClass(context.StatusCategory)">@context.StatusName</span>
+                <TemplateColumn Title="Reporter" SortBy="SortByReporter">
+                    <InitialismAvatar Name="@context.ReporterName" />
                 </TemplateColumn>
                 <TemplateColumn Title="Priority" SortBy="SortByPriority">
                     <span class="priority-pill @GetPriorityPillClass(context.Priority)">@context.Priority</span>
                 </TemplateColumn>
-                <TemplateColumn Title="Assignee" SortBy="SortByAssignee">
-                    <InitialismAvatar Name="@context.AssigneeName" />
+                <TemplateColumn Title="Status" SortBy="SortByStatus">
+                    <span class="status-pill @GetStatusPillClass(context.StatusCategory)">@context.StatusName</span>
                 </TemplateColumn>
-                <TemplateColumn Title="Due" SortBy="SortByDueDate">
+                <TemplateColumn Title="Due date" SortBy="SortByDueDate">
                     <span class="due-pill @GetDuePillClass(context.DueDate)">@GetDueDateText(context.DueDate)</span>
                 </TemplateColumn>
                 <TemplateColumn Title="Updated" SortBy="SortByUpdated">
@@ -129,13 +138,82 @@ else
     </section>
 }
 
+@if (showBulkActionsModal)
+{
+    <div class="modal-backdrop" @onclick="CloseBulkActionsModal">
+        <section class="modal-panel panel-card" @onclick:stopPropagation="true">
+            <div class="panel-header">
+                <div>
+                    <p class="panel-kicker">Issues</p>
+                    <h2>Bulk actions</h2>
+                    <p class="body-copy">Apply one change to @selectedIssueIds.Count selected issues.</p>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <label class="full-width">
+                    <span>Action</span>
+                    <InputSelect @bind-Value="bulkActionKind" @bind-Value:after="HandleBulkActionKindChangedAsync">
+                        <option value="@BulkActionKind.AssignAssignee">Change assignee</option>
+                        <option value="@BulkActionKind.MoveStatus" disabled="@(!CanBulkChangeStatus)">Move status</option>
+                    </InputSelect>
+                </label>
+
+                @if (bulkActionKind == BulkActionKind.AssignAssignee)
+                {
+                    <label class="full-width">
+                        <span>Assignee</span>
+                        <InputSelect @bind-Value="bulkAssigneeValue">
+                            <option value="">Select assignee</option>
+                            <option value="@UnassignedAssigneeValue">Unassigned</option>
+                            @foreach (var user in users)
+                            {
+                                <option value="@user.Id">@user.DisplayName</option>
+                            }
+                        </InputSelect>
+                    </label>
+                }
+                else
+                {
+                    <label class="full-width">
+                        <span>Status</span>
+                        <InputSelect @bind-Value="bulkStatusId" disabled="@(!CanBulkChangeStatus)">
+                            <option value="">Select status</option>
+                            @foreach (var status in bulkStatuses)
+                            {
+                                <option value="@status.Id">@status.Name</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    @if (!CanBulkChangeStatus)
+                    {
+                        <p class="selection-summary">Status changes require all selected issues to belong to the same project.</p>
+                    }
+                }
+            </div>
+
+            <div class="modal-actions">
+                <button type="button"
+                        class="action-button"
+                        @onclick="ApplyBulkActionAsync"
+                        disabled="@(!CanApplyBulkAction || isApplyingBulkAction)">
+                    Apply
+                </button>
+                <button type="button" class="action-button action-button-secondary" @onclick="CloseBulkActionsModal">Cancel</button>
+            </div>
+        </section>
+    </div>
+}
+
 @code {
+    private const string UnassignedAssigneeValue = "__unassigned__";
+
     private static readonly GridSort<IssueSummaryDto> SortByKey = GridSort<IssueSummaryDto>.ByAscending(x => x.Key);
     private static readonly GridSort<IssueSummaryDto> SortByTitle = GridSort<IssueSummaryDto>.ByAscending(x => x.Title);
-    private static readonly GridSort<IssueSummaryDto> SortByProject = GridSort<IssueSummaryDto>.ByAscending(x => x.ProjectKey);
-    private static readonly GridSort<IssueSummaryDto> SortByStatus = GridSort<IssueSummaryDto>.ByAscending(x => x.StatusName);
-    private static readonly GridSort<IssueSummaryDto> SortByPriority = GridSort<IssueSummaryDto>.ByAscending(x => x.Priority);
     private static readonly GridSort<IssueSummaryDto> SortByAssignee = GridSort<IssueSummaryDto>.ByAscending(x => x.AssigneeName ?? string.Empty);
+    private static readonly GridSort<IssueSummaryDto> SortByReporter = GridSort<IssueSummaryDto>.ByAscending(x => x.ReporterName);
+    private static readonly GridSort<IssueSummaryDto> SortByPriority = GridSort<IssueSummaryDto>.ByAscending(x => x.Priority);
+    private static readonly GridSort<IssueSummaryDto> SortByStatus = GridSort<IssueSummaryDto>.ByAscending(x => x.StatusName);
     private static readonly GridSort<IssueSummaryDto> SortByDueDate = GridSort<IssueSummaryDto>.ByAscending(x => x.DueDate ?? DateOnly.MaxValue);
     private static readonly GridSort<IssueSummaryDto> SortByUpdated = GridSort<IssueSummaryDto>.ByAscending(x => x.UpdatedUtc);
 
@@ -143,13 +221,39 @@ else
     private List<ProjectReferenceDto> projects = [];
     private List<UserReferenceDto> users = [];
     private List<IssueSummaryDto> issues = [];
+    private List<StatusReferenceDto> bulkStatuses = [];
     private readonly HashSet<Guid> selectedIssueIds = [];
+    private Guid? currentUserId;
     private bool isLoading = true;
+    private bool isApplyingBulkAction;
+    private bool showBulkActionsModal;
+    private BulkActionKind bulkActionKind = BulkActionKind.AssignAssignee;
+    private string bulkAssigneeValue = string.Empty;
+    private Guid? bulkStatusId;
+
+    private Guid? SelectedProjectId => issues
+        .Where(x => selectedIssueIds.Contains(x.Id))
+        .Select(x => x.ProjectId)
+        .Distinct()
+        .Take(2)
+        .ToList() is var projectIds && projectIds.Count == 1
+            ? projectIds[0]
+            : null;
+
+    private bool CanBulkChangeStatus => SelectedProjectId.HasValue;
+
+    private bool CanApplyBulkAction => bulkActionKind switch
+    {
+        BulkActionKind.AssignAssignee => !string.IsNullOrWhiteSpace(bulkAssigneeValue),
+        BulkActionKind.MoveStatus => CanBulkChangeStatus && bulkStatusId.HasValue && currentUserId.HasValue,
+        _ => false
+    };
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            currentUserId = await ResolveCurrentUserIdAsync();
             projects = (await WorkTrackingService.GetProjectsAsync()).ToList();
             users = (await WorkTrackingService.GetUsersAsync()).ToList();
 
@@ -208,6 +312,101 @@ else
         }
     }
 
+    private async Task OpenBulkActionsModalAsync()
+    {
+        if (selectedIssueIds.Count == 0)
+        {
+            return;
+        }
+
+        bulkActionKind = CanBulkChangeStatus ? BulkActionKind.MoveStatus : BulkActionKind.AssignAssignee;
+        bulkAssigneeValue = string.Empty;
+        bulkStatusId = null;
+        await HandleBulkActionKindChangedAsync();
+        showBulkActionsModal = true;
+    }
+
+    private void CloseBulkActionsModal()
+    {
+        showBulkActionsModal = false;
+    }
+
+    private async Task HandleBulkActionKindChangedAsync()
+    {
+        bulkStatusId = null;
+        bulkStatuses = [];
+
+        if (bulkActionKind == BulkActionKind.MoveStatus && SelectedProjectId.HasValue)
+        {
+            bulkStatuses = (await WorkTrackingService.GetStatusesAsync(SelectedProjectId.Value))
+                .OrderBy(x => x.SortOrder)
+                .ToList();
+        }
+    }
+
+    private async Task ApplyBulkActionAsync()
+    {
+        if (!CanApplyBulkAction || isApplyingBulkAction)
+        {
+            return;
+        }
+
+        var issueIds = selectedIssueIds.ToList();
+
+        try
+        {
+            isApplyingBulkAction = true;
+
+            if (bulkActionKind == BulkActionKind.AssignAssignee)
+            {
+                Guid? assigneeId = bulkAssigneeValue == UnassignedAssigneeValue
+                    ? null
+                    : Guid.Parse(bulkAssigneeValue);
+
+                foreach (var issueId in issueIds)
+                {
+                    var issue = await WorkTrackingService.GetIssueAsync(issueId);
+                    if (issue is null)
+                    {
+                        continue;
+                    }
+
+                    await WorkTrackingService.UpdateIssueAsync(new UpdateIssueCommand(
+                        issue.Id,
+                        issue.Title,
+                        issue.Description,
+                        issue.Type,
+                        issue.Priority,
+                        assigneeId,
+                        issue.DueDate,
+                        issue.Labels.Select(x => x.Name).ToList()));
+                }
+            }
+            else if (bulkStatusId.HasValue && currentUserId.HasValue)
+            {
+                foreach (var issueId in issueIds)
+                {
+                    await WorkTrackingService.MoveIssueAsync(new MoveIssueCommand(issueId, bulkStatusId.Value, currentUserId.Value));
+                }
+            }
+
+            selectedIssueIds.Clear();
+            showBulkActionsModal = false;
+            await RefreshIssuesAsync();
+        }
+        finally
+        {
+            isApplyingBulkAction = false;
+        }
+    }
+
+    private async Task<Guid?> ResolveCurrentUserIdAsync()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userIdClaim = authenticationState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
+    }
+
     private static string GetStatusPillClass(IssueStatusCategory category) => category switch
     {
         IssueStatusCategory.ToDo => "status-pill-todo",
@@ -257,5 +456,11 @@ else
         public Guid? AssigneeId { get; set; }
         public IssueStatusCategory? Category { get; set; }
         public IssuePriority? Priority { get; set; }
+    }
+
+    private enum BulkActionKind
+    {
+        AssignAssignee,
+        MoveStatus
     }
 }

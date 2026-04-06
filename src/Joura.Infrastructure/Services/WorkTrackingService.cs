@@ -440,16 +440,22 @@ public sealed class WorkTrackingService(
             query = query.Where(x => x.Issue.ProjectId == projectId);
         }
 
-        if (filter.AssigneeId.HasValue)
+        if (filter.LoggerId.HasValue)
         {
-            var assigneeId = filter.AssigneeId.Value;
-            query = query.Where(x => x.Issue.AssigneeId == assigneeId);
+            var loggerId = filter.LoggerId.Value;
+            query = query.Where(x => x.UserId == loggerId);
         }
 
-        if (filter.Category.HasValue)
+        if (filter.StartAt.HasValue)
         {
-            var category = filter.Category.Value;
-            query = query.Where(x => x.Issue.Status.Category == category);
+            var startAt = filter.StartAt.Value;
+            query = query.Where(x => x.StartAt >= startAt);
+        }
+
+        if (filter.EndAt.HasValue)
+        {
+            var endAt = filter.EndAt.Value;
+            query = query.Where(x => x.EndAt <= endAt);
         }
 
         return await query

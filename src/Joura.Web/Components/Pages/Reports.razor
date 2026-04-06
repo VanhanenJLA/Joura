@@ -35,8 +35,8 @@ else
                 </InputSelect>
             </label>
             <label>
-                <span>Assignee</span>
-                <InputSelect @bind-Value="filter.AssigneeId" @bind-Value:after="ReloadAsync">
+                <span>Logger</span>
+                <InputSelect @bind-Value="filter.LoggerId" @bind-Value:after="ReloadAsync">
                     <option value="">Anyone</option>
                     @foreach (var user in users)
                     {
@@ -45,14 +45,12 @@ else
                 </InputSelect>
             </label>
             <label>
-                <span>Status</span>
-                <InputSelect @bind-Value="filter.Category" @bind-Value:after="ReloadAsync">
-                    <option value="">All</option>
-                    @foreach (var category in Enum.GetValues<IssueStatusCategory>())
-                    {
-                        <option value="@category">@category</option>
-                    }
-                </InputSelect>
+                <span>Start</span>
+                <InputDate @bind-Value="filter.StartAt" @bind-Value:after="ReloadAsync" Type="InputDateType.DateTimeLocal" />
+            </label>
+            <label>
+                <span>End</span>
+                <InputDate @bind-Value="filter.EndAt" @bind-Value:after="ReloadAsync" Type="InputDateType.DateTimeLocal" />
             </label>
         </div>
     </section>
@@ -134,7 +132,7 @@ else
     private async Task ReloadAsync()
     {
         worklogEntries = (await WorkTrackingService.GetWorklogEntriesAsync(
-            new WorklogFilter(filter.ProjectId, filter.AssigneeId, filter.Category)))
+            new WorklogFilter(filter.ProjectId, filter.LoggerId, filter.StartAt, filter.EndAt)))
             .OrderByDescending(x => x.StartAt)
             .ToList();
     }
@@ -142,8 +140,9 @@ else
     private sealed class WorklogFilterState
     {
         public Guid? ProjectId { get; set; }
-        public Guid? AssigneeId { get; set; }
-        public IssueStatusCategory? Category { get; set; }
+        public Guid? LoggerId { get; set; }
+        public DateTime? StartAt { get; set; }
+        public DateTime? EndAt { get; set; }
     }
 
     private static string FormatDuration(int minutes)
