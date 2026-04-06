@@ -8,10 +8,14 @@
     <main>
         <div class="top-row">
             <div class="top-row-spacer" aria-hidden="true"></div>
-            <CommandPaletteHost />
-            <div class="top-row-actions">
-                <a class="action-button" href="/board?createIssue=true">Create issue</a>
-            </div>
+            <AuthorizeView>
+                <Authorized>
+                    <CommandPaletteHost/>
+                    <div class="top-row-actions">
+                        <a class="action-button" href="/board?createIssue=true">Create issue</a>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
         </div>
 
         <article class="content">
