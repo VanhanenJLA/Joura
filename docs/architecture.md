@@ -1,63 +1,87 @@
-# Architecture Notes
+# Architecture
 
-## Style
+## Current Shape
 
-The solution starts as a modular monolith. This keeps deployment, debugging, and transactional consistency simple while preserving domain boundaries that can be extracted later if the project earns that complexity.
+Joura is a modular monolith.
 
-## Logical modules
+That means:
 
-- `Joura.Domain`: issue tracking model, workflow status model, comments, notifications, and audit trail
-- `Joura.Application`: use-case contracts and DTOs consumed by the web layer
-- `Joura.Infrastructure`: PostgreSQL persistence, EF Core mapping, and service implementations
-- `Joura.Web`: Blazor UI and composition root
+- one deployable web application
+- one primary relational database
+- separated code layers
+- no distributed service boundaries yet
 
-## Main decisions
+This keeps the project easy to run, debug, and evolve while the feature set is still compact.
 
-- Primary relational store: PostgreSQL
-- ORM: EF Core with Npgsql
-- UI: Blazor Server-style interactive components
-- Audit model: current issue state plus append-only audit events
-- Workflow: per-project status definitions with simple categories (`ToDo`, `InProgress`, `Done`)
-- Concurrency: row-version field on `Issue`
+## Codebase Modules
 
-## Azure target
+- `Joura.Domain`
+  Core entities and enums.
+- `Joura.Application`
+  Commands, DTOs, and service abstractions consumed by the UI.
+- `Joura.Infrastructure`
+  EF Core persistence, database provider wiring, migrations, and service implementations.
+- `Joura.Web`
+  ASP.NET Core startup and Blazor UI.
 
-- Azure App Service: web app hosting
-- Azure Database for PostgreSQL: primary relational data
-- Azure Blob Storage: attachment payloads
-- Azure Key Vault: secret storage
-- Application Insights: tracing, exceptions, and performance telemetry
-- Optional Azure Functions later: notification delivery or scheduled jobs
+## Runtime Model
 
-## Delivery path
+The codebase is service-centric.
 
-### Phase 1
+In practice, the key runtime path is:
 
-- Solution structure
-- Core issue/project domain
-- PostgreSQL persistence
-- Home, issues search, board, issue detail UI
+1. a Blazor page loads or submits user input
+2. the page calls `IWorkTrackingService`
+3. `WorkTrackingService` applies tenant-aware business rules
+4. `JouraDbContext` reads or writes the database
+5. the page renders DTOs returned by the service
 
-### Phase 2
+This is the most important architectural fact to understand when editing the repo.
 
-- Cookie-based authentication with tenant-aware access
-- Issue editing flow
-- Notification delivery channel
-- Better filtering and saved searches
-- EF Core migrations instead of `EnsureCreated`
+## Major Decisions
 
-### Phase 3
+- Primary development database: PostgreSQL
+- Alternate deployment database: SQL Server
+- ORM: EF Core
+- UI model: interactive server-rendered Blazor components
+- Auth model: cookie authentication with tenant claims
+- History model: current issue state plus append-only audit events
+- Workflow model: per-project statuses with `ToDo`, `InProgress`, and `Done` categories
+- Current concurrency token: `Issue.UpdatedUtc`
 
-- Azure deployment manifests or IaC
-- App Insights and health checks
-- Key Vault integration
-- Blob-backed attachments
-- CI/CD pipeline
+## Persistence Notes
 
-## Extraction candidates
+`JouraDbContext` lives in `src/Joura.Infrastructure/Persistence/JouraDbContext.cs`.
 
-Keep these inside the monolith until load, ownership, or operational concerns justify separation:
+Current provider behavior:
 
-- Notifications
-- Search/read-model optimization
-- Reporting/dashboard aggregation
+- PostgreSQL uses migrations
+- SQL Server uses `EnsureCreated()`
+
+That asymmetry is acceptable for the current stage, but it should remain explicit in documentation and deployment notes.
+
+## Authentication And Tenant Scope
+
+The app issues cookies containing both user and tenant claims.
+
+Tenant isolation is enforced primarily in application code by filtering reads and writes through the current tenant. This is straightforward, but it means tenant safety depends on consistent service-layer discipline.
+
+## Operational Direction
+
+The `ops` folder targets Azure App Service and Azure SQL today.
+
+Future-ready but not fully implemented concerns include:
+
+- attachment payload storage
+- external identity integration
+- telemetry and health visibility
+- CI/CD automation
+
+## What Not To Overcomplicate Yet
+
+Keep these inside the monolith until there is a real operational reason to split them:
+
+- notifications
+- reporting aggregation
+- search/read-model specialization
+- scheduled background jobs
