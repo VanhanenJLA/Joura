@@ -1,5 +1,5 @@
 @page "/reports"
-@page "/worklog/search"
+@page "/worklogs/search"
 @rendermode InteractiveServer
 @inject IWorkTrackingService WorkTrackingService
 
@@ -7,14 +7,14 @@
 
 @if (isLoading)
 {
-    <p class="empty-state">Loading worklog...</p>
+    <p class="empty-state">Loading worklogs...</p>
 }
 else
 {
     <section class="panel-card calendar-shell">
         <div class="calendar-header">
             <div>
-                <p class="panel-kicker">Reports</p>
+                <p class="panel-kicker">Worklogs</p>
                 <h1>Search</h1>
             </div>
         </div>

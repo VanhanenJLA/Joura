@@ -1,17 +1,17 @@
-@page "/worklog"
+@page "/worklogs"
 @rendermode InteractiveServer
 @inject IWorkTrackingService WorkTrackingService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @using System.Globalization
 
-<PageTitle>Worklog</PageTitle>
+<PageTitle>Worklogs</PageTitle>
 
 <section class="worklog-layout">
     <section class="panel-card calendar-shell">
         <div class="calendar-header">
             <div>
-                <p class="panel-kicker">Worklog</p>
-                <h1>Worklog</h1>
+                <p class="panel-kicker">Worklogs</p>
+                <h1>Worklogs</h1>
                 <p class="body-copy">Drag across time slots to select a range. Drag an entry to reschedule it.</p>
             </div>
             <div class="calendar-controls">
@@ -23,7 +23,7 @@
 
         @if (isLoading)
         {
-            <p class="empty-state">Loading worklog...</p>
+            <p class="empty-state">Loading worklogs...</p>
         }
         else
         {
@@ -216,7 +216,7 @@
             filteredIssues.Clear();
 
             filteredIssues.AddRange((await WorkTrackingService.SearchIssuesAsync(
-                    new IssueFilter(null, null, currentUserId, null, null)))
+                    new IssueFilter(null, null, null, null, null)))
                 .OrderBy(x => x.Key, StringComparer.Ordinal));
             SyncWorklogIssueSelection();
 
