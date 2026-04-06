@@ -22,7 +22,7 @@ else
         <div class="calendar-filters">
             <label>
                 <span>Search</span>
-                <InputText @bind-Value="worklogSearchText" />
+                <InputText @bind-Value="worklogSearchText" @bind-Value:after="HandleSearchChanged" />
             </label>
             <label>
                 <span>Project</span>
@@ -61,17 +61,34 @@ else
                 <p class="panel-kicker">Results</p>
                 <h2>@VisibleWorklogEntries.Count worklog items</h2>
             </div>
+            <div class="issues-results-actions">
+                <span class="selection-summary">@selectedWorklogEntryIds.Count selected</span>
+            </div>
         </div>
 
         <div class="issues-grid-scroll">
             <QuickGrid Items="VisibleWorklogEntries.AsQueryable()" Class="issues-grid-table">
-                <TemplateColumn Title="Issue" SortBy="SortWorklogByIssue">
+                <TemplateColumn>
+                    <HeaderTemplate>
+                        <input type="checkbox"
+                               title="Select all visible worklog entries"
+                               checked="@AreAllVisibleSelected"
+                               @onchange="ToggleAllVisibleSelection" />
+                    </HeaderTemplate>
+                    <ChildContent Context="entry">
+                        <input type="checkbox"
+                               title="Select worklog entry"
+                               checked="@selectedWorklogEntryIds.Contains(entry.Id)"
+                               @onchange="args => ToggleWorklogSelection(entry.Id, args)" />
+                    </ChildContent>
+                </TemplateColumn>
+                <TemplateColumn Title="Key" SortBy="SortWorklogByIssue">
                     <a class="text-link" href="/issues/@context.IssueId">@context.IssueKey</a>
                 </TemplateColumn>
                 <TemplateColumn Title="Title" SortBy="SortWorklogByTitle">
                     <span>@context.IssueTitle</span>
                 </TemplateColumn>
-                <TemplateColumn Title="User" SortBy="SortWorklogByUser">
+                <TemplateColumn Title="Logger" SortBy="SortWorklogByUser">
                     <span>@context.UserName</span>
                 </TemplateColumn>
                 <TemplateColumn Title="Start" SortBy="SortWorklogByStart">
@@ -104,6 +121,7 @@ else
     private List<ProjectReferenceDto> projects = [];
     private List<UserReferenceDto> users = [];
     private List<WorklogEntryDto> worklogEntries = [];
+    private readonly HashSet<Guid> selectedWorklogEntryIds = [];
     private string worklogSearchText = string.Empty;
     private bool isLoading = true;
 
@@ -114,6 +132,9 @@ else
             || entry.UserName.Contains(worklogSearchText, StringComparison.OrdinalIgnoreCase)
             || entry.Note.Contains(worklogSearchText, StringComparison.OrdinalIgnoreCase))
         .ToList();
+
+    private bool AreAllVisibleSelected => VisibleWorklogEntries.Count > 0
+        && VisibleWorklogEntries.All(x => selectedWorklogEntryIds.Contains(x.Id));
 
     protected override async Task OnInitializedAsync()
     {
@@ -135,6 +156,49 @@ else
             new WorklogFilter(filter.ProjectId, filter.LoggerId, filter.StartAt, filter.EndAt)))
             .OrderByDescending(x => x.StartAt)
             .ToList();
+
+        SyncSelectedWorklogsToVisible();
+    }
+
+    private Task HandleSearchChanged()
+    {
+        SyncSelectedWorklogsToVisible();
+        return Task.CompletedTask;
+    }
+
+    private void ToggleAllVisibleSelection(ChangeEventArgs args)
+    {
+        if (args.Value is bool isChecked && isChecked)
+        {
+            foreach (var entry in VisibleWorklogEntries)
+            {
+                selectedWorklogEntryIds.Add(entry.Id);
+            }
+
+            return;
+        }
+
+        foreach (var entry in VisibleWorklogEntries)
+        {
+            selectedWorklogEntryIds.Remove(entry.Id);
+        }
+    }
+
+    private void ToggleWorklogSelection(Guid worklogEntryId, ChangeEventArgs args)
+    {
+        if (args.Value is bool isChecked && isChecked)
+        {
+            selectedWorklogEntryIds.Add(worklogEntryId);
+            return;
+        }
+
+        selectedWorklogEntryIds.Remove(worklogEntryId);
+    }
+
+    private void SyncSelectedWorklogsToVisible()
+    {
+        var visibleWorklogIds = VisibleWorklogEntries.Select(x => x.Id).ToHashSet();
+        selectedWorklogEntryIds.RemoveWhere(x => !visibleWorklogIds.Contains(x));
     }
 
     private sealed class WorklogFilterState
