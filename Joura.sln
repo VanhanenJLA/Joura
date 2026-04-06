@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{6170B2B9-61C1-4A5E-8A87-4B741C8BA615}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Joura.Web", "src\Joura.Web\Joura.Web.csproj", "{5318EE2D-4605-4F6A-80D0-C30B69DD2BBA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Joura.Domain", "src\Joura.Domain\Joura.Domain.csproj", "{3E7822FB-3465-49D1-8417-623FF5033B5C}"
@@ -24,6 +26,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ops", "ops", "{14EF0A99-F8F
 		ops\main.bicep = ops\main.bicep
 		ops\main.dev.bicepparam = ops\main.dev.bicepparam
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Joura.UiTests", "tests\Joura.UiTests\Joura.UiTests.csproj", "{C090F0D7-0680-478F-9B46-3A36C4CF5D62}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -83,6 +87,18 @@ Global
 		{EE839C45-D40D-4B2D-90BB-3957745635EB}.Release|x64.Build.0 = Release|Any CPU
 		{EE839C45-D40D-4B2D-90BB-3957745635EB}.Release|x86.ActiveCfg = Release|Any CPU
 		{EE839C45-D40D-4B2D-90BB-3957745635EB}.Release|x86.Build.0 = Release|Any CPU
+		{C090F0D7-0680-478F-9B46-3A36C4CF5D62}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C090F0D7-0680-478F-9B46-3A36C4CF5D62}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C090F0D7-0680-478F-9B46-3A36C4CF5D62}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C090F0D7-0680-478F-9B46-3A36C4CF5D62}.Debug|x64.Build.0 = Debug|Any CPU
+		{C090F0D7-0680-478F-9B46-3A36C4CF5D62}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C090F0D7-0680-478F-9B46-3A36C4CF5D62}.Debug|x86.Build.0 = Debug|Any CPU
+		{C090F0D7-0680-478F-9B46-3A36C4CF5D62}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C090F0D7-0680-478F-9B46-3A36C4CF5D62}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C090F0D7-0680-478F-9B46-3A36C4CF5D62}.Release|x64.ActiveCfg = Release|Any CPU
+		{C090F0D7-0680-478F-9B46-3A36C4CF5D62}.Release|x64.Build.0 = Release|Any CPU
+		{C090F0D7-0680-478F-9B46-3A36C4CF5D62}.Release|x86.ActiveCfg = Release|Any CPU
+		{C090F0D7-0680-478F-9B46-3A36C4CF5D62}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -92,5 +108,6 @@ Global
 		{3E7822FB-3465-49D1-8417-623FF5033B5C} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{1A868C02-4D89-4EC8-B954-9F920CCBA3E8} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{EE839C45-D40D-4B2D-90BB-3957745635EB} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{C090F0D7-0680-478F-9B46-3A36C4CF5D62} = {6170B2B9-61C1-4A5E-8A87-4B741C8BA615}
 	EndGlobalSection
 EndGlobal

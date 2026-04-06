@@ -7,6 +7,7 @@ artifacts/
 publish/
 
 # User-specific files
+.DS_Store
 *.user
 *.rsuser
 *.suo

@@ -11,10 +11,10 @@
 }
 else
 {
-    <section class="hero-card">
+    <section class="hero-card" data-testid="home-page">
         <div>
             <p class="hero-kicker">Overview</p>
-            <h1>@overview.TenantName</h1>
+            <h1 data-testid="home-tenant-name">@overview.TenantName</h1>
             <p class="hero-copy">Your tenant at a glance.</p>
         </div>
         <div class="hero-stats">
@@ -39,12 +39,12 @@ else
                 <p class="panel-kicker">Projects</p>
                 <h2>Tenant portfolio</h2>
             </div>
-            <button class="action-button" type="button" @onclick="OpenCreateProjectModal">Create project</button>
+            <button class="action-button" type="button" data-testid="home-create-project" @onclick="OpenCreateProjectModal">Create project</button>
         </div>
         <div class="project-grid">
             @foreach (var project in overview.Projects)
             {
-                <a class="project-card" href="/board?projectId=@project.Id">
+                <a class="project-card" href="/board?projectId=@project.Id" data-testid="@($"project-card-{project.Key.ToLowerInvariant()}")">
                     <span class="project-key">@project.Key</span>
                     <strong>@project.Name</strong>
                     <span>@project.IssueCount issues</span>
@@ -83,7 +83,7 @@ else
 @if (showCreateProjectModal)
 {
     <div class="modal-backdrop" @onclick="CloseCreateProjectModal">
-        <section class="modal-panel panel-card" @onclick:stopPropagation="true">
+        <section class="modal-panel panel-card" data-testid="create-project-modal" @onclick:stopPropagation="true">
             <div class="panel-header">
                 <div>
                     <p class="panel-kicker">Create</p>
@@ -95,21 +95,21 @@ else
                 <div class="form-grid">
                     <label>
                         <span>Name</span>
-                        <InputText @bind-Value="projectForm.Name" />
+                        <InputText @bind-Value="projectForm.Name" data-testid="create-project-name" />
                     </label>
                     <label>
                         <span>Key</span>
-                        <InputText @bind-Value="projectForm.Key" />
+                        <InputText @bind-Value="projectForm.Key" data-testid="create-project-key" />
                     </label>
                     <label class="full-width">
                         <span>Description</span>
-                        <InputTextArea @bind-Value="projectForm.Description" />
+                        <InputTextArea @bind-Value="projectForm.Description" data-testid="create-project-description" />
                     </label>
                 </div>
 
                 <div class="modal-actions">
-                    <button class="action-button" type="submit" disabled="@isCreatingProject">Create</button>
-                    <button class="action-button action-button-secondary" type="button" @onclick="CloseCreateProjectModal">Cancel</button>
+                    <button class="action-button" type="submit" data-testid="create-project-submit" disabled="@isCreatingProject">Create</button>
+                    <button class="action-button action-button-secondary" type="button" data-testid="create-project-cancel" @onclick="CloseCreateProjectModal">Cancel</button>
                 </div>
             </EditForm>
         </section>

@@ -121,3 +121,28 @@ That means PostgreSQL is the primary development path today.
 - `docs/data-model.md`: entities, relationships, and persistence rules
 - `docs/contributing.md`: where to place changes and what conventions matter
 - `ops/README.md`: Azure deployment notes
+
+## UI Tests
+
+The repo now includes a minimal Playwright-based UI suite in `tests/Joura.UiTests`.
+
+Current coverage is intentionally small:
+
+- login through the real `/login` page
+- create an issue from the board and add a comment
+- select worklog rows and download the PDF report
+
+Before running the suite:
+
+1. start PostgreSQL with `docker compose up -d`
+2. install Playwright browsers
+
+Example commands:
+
+```bash
+dotnet restore tests/Joura.UiTests/Joura.UiTests.csproj
+pwsh tests/Joura.UiTests/bin/Debug/net8.0/playwright.ps1 install --with-deps
+dotnet test tests/Joura.UiTests/Joura.UiTests.csproj
+```
+
+The test fixture creates an isolated PostgreSQL database per test run, starts the real web app, and drives it through Playwright.

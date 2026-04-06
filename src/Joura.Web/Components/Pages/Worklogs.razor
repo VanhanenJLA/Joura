@@ -6,7 +6,7 @@
 
 <PageTitle>Worklogs</PageTitle>
 
-<section class="worklog-layout">
+<section class="worklog-layout" data-testid="worklogs-page">
     <section class="panel-card calendar-shell">
         <div class="calendar-header">
             <div>
@@ -15,9 +15,9 @@
                 <p class="body-copy">Drag across time slots to select a range. Drag an entry to reschedule it.</p>
             </div>
             <div class="calendar-controls">
-                <button type="button" class="action-button action-button-secondary" @onclick="PreviousWeek">Previous</button>
-                <strong>@WeekTitle</strong>
-                <button type="button" class="action-button action-button-secondary" @onclick="NextWeek">Next</button>
+                <button type="button" class="action-button action-button-secondary" data-testid="worklogs-previous-week" @onclick="PreviousWeek">Previous</button>
+                <strong data-testid="worklogs-week-title">@WeekTitle</strong>
+                <button type="button" class="action-button action-button-secondary" data-testid="worklogs-next-week" @onclick="NextWeek">Next</button>
             </div>
         </div>
 
@@ -57,6 +57,7 @@
                                     <button type="button"
                                             class="calendar-planner-slot @(isSelected ? "calendar-planner-slot-selected" : string.Empty)"
                                             style="@GetPlannerSlotStyle(slotStart)"
+                                            data-testid="@($"worklog-slot-{slotStart:yyyyMMdd-HHmm}")"
                                             @onmousedown="() => BeginWorklogRangeSelection(slotStart)"
                                             @onmouseenter="() => UpdateWorklogRangeSelection(slotStart)"
                                             @onmousedown:preventDefault="true">
@@ -66,9 +67,11 @@
                                 @foreach (var entry in dayEntries.Where(ShouldRenderPlannerEntry))
                                 {
                                     <div class="calendar-planner-entry @(IsReschedulingEntry(entry) ? "calendar-planner-entry-dragging" : string.Empty) @(IsEditingEntry(entry) ? "calendar-planner-entry-editing" : string.Empty)"
+                                         data-testid="worklog-planner-entry"
                                          style="@GetPlannerEntryStyle(entry)">
                                         <button type="button"
                                                 class="calendar-planner-entry-main"
+                                                data-testid="worklog-planner-entry-open"
                                                 @onclick="() => BeginWorklogEdit(entry)">
                                             <strong>@entry.IssueTitle</strong>
                                             <span class="calendar-planner-entry-meta">@entry.IssueKey</span>
@@ -76,6 +79,7 @@
                                         </button>
                                         <button type="button"
                                                 class="calendar-planner-entry-drag-handle"
+                                                data-testid="worklog-planner-entry-drag"
                                                 title="Drag to reschedule"
                                                 @onmousedown="() => BeginWorklogReschedule(entry)"
                                                 @onmousedown:preventDefault="true">
@@ -96,11 +100,11 @@
             <p class="panel-kicker worklog-sidebar-kicker">Display</p>
             <div class="worklog-visibility-toggles">
                 <label class="worklog-visibility-toggle">
-                    <input type="checkbox" checked="@showSaturday" @onchange="ToggleSaturdayVisibility" />
+                    <input type="checkbox" data-testid="worklogs-show-saturday" checked="@showSaturday" @onchange="ToggleSaturdayVisibility" />
                     <span>Saturday</span>
                 </label>
                 <label class="worklog-visibility-toggle">
-                    <input type="checkbox" checked="@showSunday" @onchange="ToggleSundayVisibility" />
+                    <input type="checkbox" data-testid="worklogs-show-sunday" checked="@showSunday" @onchange="ToggleSundayVisibility" />
                     <span>Sunday</span>
                 </label>
             </div>
@@ -120,6 +124,7 @@
                     <label class="full-width">
                         <span>Issue</span>
                         <input class="form-control"
+                               data-testid="worklogs-issue-input"
                                list="worklog-issue-options"
                                @bind="issueInputText"
                                @bind:event="oninput"
@@ -133,23 +138,23 @@
                     </label>
                     <label>
                         <span>Start</span>
-                        <InputDate @bind-Value="worklogForm.StartAt" Type="InputDateType.DateTimeLocal" />
+                        <InputDate @bind-Value="worklogForm.StartAt" Type="InputDateType.DateTimeLocal" data-testid="worklogs-start" />
                     </label>
                     <label>
                         <span>End</span>
-                        <InputDate @bind-Value="worklogForm.EndAt" Type="InputDateType.DateTimeLocal" />
+                        <InputDate @bind-Value="worklogForm.EndAt" Type="InputDateType.DateTimeLocal" data-testid="worklogs-end" />
                     </label>
                     <label class="full-width">
                         <span>Note</span>
-                        <InputText @bind-Value="worklogForm.Note" />
+                        <InputText @bind-Value="worklogForm.Note" data-testid="worklogs-note" />
                     </label>
                 </div>
                 <div class="worklog-editor-actions">
-                    <button type="submit" class="action-button" disabled="@isSubmittingWorklog || isDeletingWorklog">@(isEditingWorklog ? "Save" : "Submit")</button>
+                    <button type="submit" class="action-button" data-testid="worklogs-submit" disabled="@(isSubmittingWorklog || isDeletingWorklog)">@(isEditingWorklog ? "Save" : "Submit")</button>
                     @if (isEditingWorklog)
                     {
-                        <button type="button" class="action-button action-button-secondary" @onclick="CancelWorklogEdit" disabled="@isSubmittingWorklog || isDeletingWorklog">Cancel</button>
-                        <button type="button" class="action-button worklog-delete-button" @onclick="DeleteEditingWorklogAsync" disabled="@isSubmittingWorklog || isDeletingWorklog">Delete</button>
+                        <button type="button" class="action-button action-button-secondary" data-testid="worklogs-cancel" @onclick="CancelWorklogEdit" disabled="@(isSubmittingWorklog || isDeletingWorklog)">Cancel</button>
+                        <button type="button" class="action-button worklog-delete-button" data-testid="worklogs-delete" @onclick="DeleteEditingWorklogAsync" disabled="@(isSubmittingWorklog || isDeletingWorklog)">Delete</button>
                     }
                 </div>
             </EditForm>

@@ -11,14 +11,14 @@
 }
 else if (projects.Count == 0)
 {
-    <section class="panel-card">
+    <section class="panel-card" data-testid="issues-page">
         <p class="empty-state">No projects found for this tenant.</p>
         <a class="text-link" href="/">Go to Home</a>
     </section>
 }
 else
 {
-    <section class="panel-card">
+    <section class="panel-card" data-testid="issues-page">
         <div class="panel-header">
             <div>
                 <p class="panel-kicker">Issues</p>
@@ -31,11 +31,11 @@ else
         <div class="filters-inline">
             <label class="filters-inline-search">
                 <span>Search</span>
-                <InputText @bind-Value="filter.SearchText" @bind-Value:after="RefreshIssuesAsync" />
+                <InputText @bind-Value="filter.SearchText" @bind-Value:after="RefreshIssuesAsync" data-testid="issues-search" />
             </label>
             <label>
                 <span>Project</span>
-                <InputSelect @bind-Value="filter.ProjectId" @bind-Value:after="RefreshIssuesAsync">
+                <InputSelect @bind-Value="filter.ProjectId" @bind-Value:after="RefreshIssuesAsync" data-testid="issues-project-filter">
                     <option value="">All</option>
                     @foreach (var project in projects)
                     {
@@ -45,7 +45,7 @@ else
             </label>
             <label>
                 <span>Priority</span>
-                <InputSelect @bind-Value="filter.Priority" @bind-Value:after="RefreshIssuesAsync">
+                <InputSelect @bind-Value="filter.Priority" @bind-Value:after="RefreshIssuesAsync" data-testid="issues-priority-filter">
                     <option value="">All</option>
                     @foreach (var priority in Enum.GetValues<IssuePriority>())
                     {
@@ -55,7 +55,7 @@ else
             </label>
             <label>
                 <span>Status</span>
-                <InputSelect @bind-Value="filter.Category" @bind-Value:after="RefreshIssuesAsync">
+                <InputSelect @bind-Value="filter.Category" @bind-Value:after="RefreshIssuesAsync" data-testid="issues-status-filter">
                     <option value="">All</option>
                     @foreach (var category in Enum.GetValues<IssueStatusCategory>())
                     {
@@ -65,7 +65,7 @@ else
             </label>
             <label>
                 <span>Assignee</span>
-                <InputSelect @bind-Value="filter.AssigneeId" @bind-Value:after="RefreshIssuesAsync">
+                <InputSelect @bind-Value="filter.AssigneeId" @bind-Value:after="RefreshIssuesAsync" data-testid="issues-assignee-filter">
                     <option value="">Anyone</option>
                     @foreach (var user in users)
                     {
@@ -80,12 +80,13 @@ else
         <div class="panel-header">
             <div>
                 <p class="panel-kicker">Results</p>
-                <h2>@issues.Count issues</h2>
+                <h2 data-testid="issues-result-count">@issues.Count issues</h2>
             </div>
             <div class="issues-results-actions">
-                <span class="selection-summary">@selectedIssueIds.Count selected</span>
+                <span class="selection-summary" data-testid="issues-selection-count">@selectedIssueIds.Count selected</span>
                 <button type="button"
                         class="action-button action-button-secondary"
+                        data-testid="issues-bulk-actions"
                         @onclick="OpenBulkActionsModalAsync"
                         disabled="@(selectedIssueIds.Count == 0)">
                     Bulk actions
@@ -99,12 +100,14 @@ else
                     <HeaderTemplate>
                         <input type="checkbox"
                                title="Select all visible issues"
+                               data-testid="issues-select-all"
                                checked="@AreAllVisibleSelected"
                                @onchange="ToggleAllVisibleSelection" />
                     </HeaderTemplate>
                     <ChildContent Context="issue">
                         <input type="checkbox"
                                title="Select issue"
+                               data-testid="@($"issue-select-{issue.Key.ToLowerInvariant()}")"
                                checked="@selectedIssueIds.Contains(issue.Id)"
                                @onchange="args => ToggleIssueSelection(issue.Id, args)" />
                     </ChildContent>
@@ -113,7 +116,7 @@ else
                     <span class="issue-grid-key">@context.Key</span>
                 </TemplateColumn>
                 <TemplateColumn Title="Title" SortBy="SortByTitle">
-                    <a class="text-link" href="/issues/@context.Id">@context.Title</a>
+                    <a class="text-link" href="/issues/@context.Id" data-testid="@($"issue-link-{context.Key.ToLowerInvariant()}")">@context.Title</a>
                 </TemplateColumn>
                 <TemplateColumn Title="Assignee" SortBy="SortByAssignee">
                     <InitialismAvatar Name="@context.AssigneeName" />
@@ -141,7 +144,7 @@ else
 @if (showBulkActionsModal)
 {
     <div class="modal-backdrop" @onclick="CloseBulkActionsModal">
-        <section class="modal-panel panel-card" @onclick:stopPropagation="true">
+        <section class="modal-panel panel-card" data-testid="bulk-actions-modal" @onclick:stopPropagation="true">
             <div class="panel-header">
                 <div>
                     <p class="panel-kicker">Issues</p>
@@ -153,7 +156,7 @@ else
             <div class="form-grid">
                 <label class="full-width">
                     <span>Action</span>
-                    <InputSelect @bind-Value="bulkActionKind" @bind-Value:after="HandleBulkActionKindChangedAsync">
+                    <InputSelect @bind-Value="bulkActionKind" @bind-Value:after="HandleBulkActionKindChangedAsync" data-testid="bulk-action-kind">
                         <option value="@BulkActionKind.AssignAssignee">Change assignee</option>
                         <option value="@BulkActionKind.MoveStatus" disabled="@(!CanBulkChangeStatus)">Move status</option>
                     </InputSelect>
@@ -163,7 +166,7 @@ else
                 {
                     <label class="full-width">
                         <span>Assignee</span>
-                        <InputSelect @bind-Value="bulkAssigneeValue">
+                        <InputSelect @bind-Value="bulkAssigneeValue" data-testid="bulk-assignee">
                             <option value="">Select assignee</option>
                             <option value="@UnassignedAssigneeValue">Unassigned</option>
                             @foreach (var user in users)
@@ -177,7 +180,7 @@ else
                 {
                     <label class="full-width">
                         <span>Status</span>
-                        <InputSelect @bind-Value="bulkStatusId" disabled="@(!CanBulkChangeStatus)">
+                        <InputSelect @bind-Value="bulkStatusId" data-testid="bulk-status" disabled="@(!CanBulkChangeStatus)">
                             <option value="">Select status</option>
                             @foreach (var status in bulkStatuses)
                             {
@@ -195,11 +198,12 @@ else
             <div class="modal-actions">
                 <button type="button"
                         class="action-button"
+                        data-testid="bulk-apply"
                         @onclick="ApplyBulkActionAsync"
                         disabled="@(!CanApplyBulkAction || isApplyingBulkAction)">
                     Apply
                 </button>
-                <button type="button" class="action-button action-button-secondary" @onclick="CloseBulkActionsModal">Cancel</button>
+                <button type="button" class="action-button action-button-secondary" data-testid="bulk-cancel" @onclick="CloseBulkActionsModal">Cancel</button>
             </div>
         </section>
     </div>

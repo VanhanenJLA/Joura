@@ -5,7 +5,7 @@
 
 <PageTitle>Login</PageTitle>
 
-<section class="panel-card">
+<section class="panel-card" data-testid="login-page">
     <div class="panel-header">
         <div>
             <p class="panel-kicker">Login</p>
@@ -33,7 +33,7 @@
     <section class="page-grid">
         @foreach (var tenant in tenants)
         {
-            <section class="subpanel-card">
+            <section class="subpanel-card" data-testid="@($"tenant-card-{tenant.Name.Replace(" ", "-").ToLowerInvariant()}")">
                 <div class="panel-header">
                     <div>
                         <p class="panel-kicker">Tenant</p>
@@ -44,7 +44,7 @@
                 <div class="issue-list">
                     @foreach (var user in tenant.Users)
                     {
-                        <form method="post" action="/auth/login" class="issue-card">
+                        <form method="post" action="/auth/login" class="issue-card" data-testid="@($"login-form-{user.Email.Replace("@", "-at-").Replace(".", "-")}")">
                             <input type="hidden" name="email" value="@user.Email" />
                             <input type="hidden" name="returnUrl" value="@returnUrl" />
                             <div class="issue-card-main">
@@ -56,7 +56,11 @@
                             <div class="issue-card-meta">
                                 <span>@user.Email</span>
                             </div>
-                            <button type="submit" class="action-button">Continue as @user.DisplayName</button>
+                            <button type="submit"
+                                    class="action-button"
+                                    data-testid="@($"login-button-{user.Email.Replace("@", "-at-").Replace(".", "-")}")">
+                                Continue as @user.DisplayName
+                            </button>
                         </form>
                     }
                 </div>

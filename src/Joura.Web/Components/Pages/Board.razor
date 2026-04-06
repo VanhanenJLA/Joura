@@ -12,14 +12,15 @@
 }
 else if (projects.Count == 0)
 {
-    <section class="panel-card">
+    
+    <section class="panel-card" data-testid="board-page">
         <p class="empty-state">No projects found for this tenant.</p>
         <a class="text-link" href="/">Go to Home</a>
     </section>
 }
 else
 {
-    <section class="panel-card">
+    <section class="panel-card" data-testid="board-page">
         <div class="panel-header">
             <div>
                 <p class="panel-kicker">Board</p>
@@ -29,7 +30,7 @@ else
             <div class="board-toolbar">
                 <label class="compact-field">
                     <span>Project</span>
-                    <InputSelect @bind-Value="selectedProjectId" @bind-Value:after="LoadBoardAsync">
+                    <InputSelect @bind-Value="selectedProjectId" @bind-Value:after="LoadBoardAsync" data-testid="board-project-select">
                         @foreach (var project in projects)
                         {
                             <option value="@project.Id">@project.Key - @project.Name</option>
@@ -44,6 +45,7 @@ else
         @foreach (var column in columns)
         {
             <div class="board-column @(dropTargetStatusId == column.StatusId ? "board-column-active" : string.Empty)"
+                 data-testid="@($"board-column-{column.StatusName.Replace(" ", "-").ToLowerInvariant()}")"
                  ondragover="event.preventDefault();"
                  @ondragenter="@(() => SetDropTarget(column.StatusId))"
                  @ondragleave="@(() => ClearDropTarget(column.StatusId))"
@@ -58,6 +60,7 @@ else
                 @foreach (var issue in column.Issues)
                 {
                     <div class="board-ticket @(draggingIssueId == issue.Id ? "board-ticket-dragging" : string.Empty)"
+                         data-testid="@($"board-ticket-{issue.Key.ToLowerInvariant()}")"
                          data-issue-id="@issue.Id"
                          draggable="true"
                          ondragstart="event.dataTransfer.setData('text/plain', this.dataset.issueId); event.dataTransfer.effectAllowed = 'move';"
@@ -83,7 +86,7 @@ else
 @if (showCreateIssueModal)
 {
     <div class="modal-backdrop" @onclick="CloseCreateIssueModal">
-        <section class="modal-panel panel-card" @onclick:stopPropagation="true">
+        <section class="modal-panel panel-card" data-testid="create-issue-modal" @onclick:stopPropagation="true">
             <div class="panel-header">
                 <div>
                     <p class="panel-kicker">Board</p>
@@ -95,15 +98,15 @@ else
                 <div class="form-grid">
                     <label class="full-width">
                         <span>Title</span>
-                        <InputText @bind-Value="createIssueForm.Title" />
+                        <InputText @bind-Value="createIssueForm.Title" data-testid="create-issue-title" />
                     </label>
                     <label class="full-width">
                         <span>Description</span>
-                        <InputTextArea @bind-Value="createIssueForm.Description" />
+                        <InputTextArea @bind-Value="createIssueForm.Description" data-testid="create-issue-description" />
                     </label>
                     <label>
                         <span>Type</span>
-                        <InputSelect @bind-Value="createIssueForm.Type">
+                        <InputSelect @bind-Value="createIssueForm.Type" data-testid="create-issue-type">
                             @foreach (var type in Enum.GetValues<IssueType>())
                             {
                                 <option value="@type">@type</option>
@@ -112,7 +115,7 @@ else
                     </label>
                     <label>
                         <span>Priority</span>
-                        <InputSelect @bind-Value="createIssueForm.Priority">
+                        <InputSelect @bind-Value="createIssueForm.Priority" data-testid="create-issue-priority">
                             @foreach (var priority in Enum.GetValues<IssuePriority>())
                             {
                                 <option value="@priority">@priority</option>
@@ -121,7 +124,7 @@ else
                     </label>
                     <label>
                         <span>Assignee</span>
-                        <InputSelect @bind-Value="createIssueForm.AssigneeId">
+                        <InputSelect @bind-Value="createIssueForm.AssigneeId" data-testid="create-issue-assignee">
                             <option value="">Unassigned</option>
                             @foreach (var user in users)
                             {
@@ -131,7 +134,7 @@ else
                     </label>
                     <label>
                         <span>Project</span>
-                        <InputSelect @bind-Value="createIssueForm.ProjectId">
+                        <InputSelect @bind-Value="createIssueForm.ProjectId" data-testid="create-issue-project">
                             @foreach (var project in projects)
                             {
                                 <option value="@project.Id">@project.Key - @project.Name</option>
@@ -140,16 +143,16 @@ else
                     </label>
                     <label>
                         <span>Due date</span>
-                        <InputDate @bind-Value="createIssueForm.DueDate" />
+                        <InputDate @bind-Value="createIssueForm.DueDate" data-testid="create-issue-due-date" />
                     </label>
                     <label class="full-width">
                         <span>Labels (comma separated)</span>
-                        <InputText @bind-Value="createIssueForm.Labels" />
+                        <InputText @bind-Value="createIssueForm.Labels" data-testid="create-issue-labels" />
                     </label>
                 </div>
 
                 <div class="modal-actions">
-                    <button type="submit" class="action-button" disabled="@isCreatingIssue">Create</button>
+                    <button type="submit" class="action-button" data-testid="create-issue-submit" disabled="@isCreatingIssue">Create</button>
                     <button type="button" class="action-button action-button-secondary" @onclick="CloseCreateIssueModal">Cancel</button>
                 </div>
             </EditForm>

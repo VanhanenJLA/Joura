@@ -4,7 +4,7 @@
 
 <PageTitle>Due Dates</PageTitle>
 
-<div class="due-dates-layout">
+<div class="due-dates-layout" data-testid="due-dates-page">
     <section class="panel-card calendar-shell">
         <div class="calendar-header">
             <div>
@@ -12,9 +12,9 @@
                 <h1>Month view</h1>
             </div>
             <div class="calendar-controls">
-                <button type="button" class="action-button action-button-secondary" @onclick="PreviousMonth">Previous</button>
-                <strong>@MonthTitle</strong>
-                <button type="button" class="action-button action-button-secondary" @onclick="NextMonth">Next</button>
+                <button type="button" class="action-button action-button-secondary" data-testid="due-dates-previous-month" @onclick="PreviousMonth">Previous</button>
+                <strong data-testid="due-dates-month-title">@MonthTitle</strong>
+                <button type="button" class="action-button action-button-secondary" data-testid="due-dates-next-month" @onclick="NextMonth">Next</button>
             </div>
         </div>
 
@@ -35,7 +35,7 @@
                     @foreach (var day in visibleDays)
                     {
                         var isCurrentMonth = day.Month == currentMonth.Month && day.Year == currentMonth.Year;
-                        <article class="calendar-cell @(isCurrentMonth ? string.Empty : "calendar-cell-outside")">
+                            <article class="calendar-cell @(isCurrentMonth ? string.Empty : "calendar-cell-outside")" data-testid="@($"due-date-cell-{day:yyyy-MM-dd}")">
                             <header class="calendar-day-header">
                                 <span class="calendar-day-number">@day.Day</span>
                             </header>
@@ -43,7 +43,7 @@
                             {
                                 foreach (var issue in dayIssues)
                                 {
-                                    <a class="calendar-issue-link" href="/issues/@issue.Id">
+                                    <a class="calendar-issue-link" href="/issues/@issue.Id" data-testid="@($"due-date-issue-{issue.Key.ToLowerInvariant()}")">
                                         <span class="issue-key">@issue.Key</span>
                                         <span>@issue.Title</span>
                                     </a>
@@ -66,7 +66,7 @@
         <div class="calendar-filters due-dates-filters">
             <label>
                 <span>Project</span>
-                <InputSelect @bind-Value="filter.ProjectId" @bind-Value:after="ReloadCalendarAsync">
+                <InputSelect @bind-Value="filter.ProjectId" @bind-Value:after="ReloadCalendarAsync" data-testid="due-dates-project-filter">
                     <option value="">All</option>
                     @foreach (var project in projects)
                     {
@@ -76,7 +76,7 @@
             </label>
             <label>
                 <span>Assignee</span>
-                <InputSelect @bind-Value="filter.AssigneeId" @bind-Value:after="ReloadCalendarAsync">
+                <InputSelect @bind-Value="filter.AssigneeId" @bind-Value:after="ReloadCalendarAsync" data-testid="due-dates-assignee-filter">
                     <option value="">Anyone</option>
                     @foreach (var user in users)
                     {
@@ -86,7 +86,7 @@
             </label>
             <label>
                 <span>Status</span>
-                <InputSelect @bind-Value="filter.Category" @bind-Value:after="ReloadCalendarAsync">
+                <InputSelect @bind-Value="filter.Category" @bind-Value:after="ReloadCalendarAsync" data-testid="due-dates-status-filter">
                     <option value="">All</option>
                     @foreach (var category in Enum.GetValues<IssueStatusCategory>())
                     {

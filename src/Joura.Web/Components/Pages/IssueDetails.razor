@@ -11,11 +11,11 @@
 }
 else
 {
-    <section class="panel-card">
+    <section class="panel-card" data-testid="issue-details-page">
         <div class="panel-header">
             <div>
-                <p class="panel-kicker">@issue.Key</p>
-                <h1>@issue.Title</h1>
+                <p class="panel-kicker" data-testid="issue-key">@issue.Key</p>
+                <h1 data-testid="issue-title">@issue.Title</h1>
             </div>
             <div class="tag-row">
                 @if (isEditing)
@@ -25,7 +25,7 @@ else
                 }
                 else
                 {
-                    <button type="button" class="action-button action-button-secondary" @onclick="BeginEdit">Edit</button>
+                    <button type="button" class="action-button action-button-secondary" data-testid="issue-edit-button" @onclick="BeginEdit">Edit</button>
                 }
             </div>
         </div>
@@ -37,15 +37,15 @@ else
                     <div class="form-grid">
                         <label class="full-width">
                             <span>Title</span>
-                            <InputText @bind-Value="editForm.Title" />
+                            <InputText @bind-Value="editForm.Title" data-testid="issue-edit-title" />
                         </label>
                         <label class="full-width">
                             <span>Description</span>
-                            <InputTextArea @bind-Value="editForm.Description" />
+                            <InputTextArea @bind-Value="editForm.Description" data-testid="issue-edit-description" />
                         </label>
                         <label>
                             <span>Type</span>
-                            <InputSelect @bind-Value="editForm.Type">
+                            <InputSelect @bind-Value="editForm.Type" data-testid="issue-edit-type">
                                 @foreach (var type in Enum.GetValues<IssueType>())
                                 {
                                     <option value="@type">@type</option>
@@ -54,7 +54,7 @@ else
                         </label>
                         <label>
                             <span>Priority</span>
-                            <InputSelect @bind-Value="editForm.Priority">
+                            <InputSelect @bind-Value="editForm.Priority" data-testid="issue-edit-priority">
                                 @foreach (var priority in Enum.GetValues<IssuePriority>())
                                 {
                                     <option value="@priority">@priority</option>
@@ -63,7 +63,7 @@ else
                         </label>
                         <label>
                             <span>Assignee</span>
-                            <InputSelect @bind-Value="editForm.AssigneeId">
+                            <InputSelect @bind-Value="editForm.AssigneeId" data-testid="issue-edit-assignee">
                                 <option value="">Unassigned</option>
                                 @foreach (var user in users)
                                 {
@@ -73,28 +73,28 @@ else
                         </label>
                         <label>
                             <span>Due date</span>
-                            <InputDate @bind-Value="editForm.DueDate" />
+                            <InputDate @bind-Value="editForm.DueDate" data-testid="issue-edit-due-date" />
                         </label>
                         <label class="full-width">
                             <span>Labels (comma separated)</span>
-                            <InputText @bind-Value="editForm.Labels" />
+                            <InputText @bind-Value="editForm.Labels" data-testid="issue-edit-labels" />
                         </label>
                     </div>
-                    <button type="submit" class="action-button" disabled="@isSavingEdit">Save changes</button>
+                    <button type="submit" class="action-button" data-testid="issue-edit-save" disabled="@isSavingEdit">Save changes</button>
                 </EditForm>
             </div>
         }
         else
         {
             <div class="detail-grid">
-                <div class="subpanel-card">
-                    <h2>Description</h2>
-                    <p class="body-copy">@issue.Description</p>
-                    <div class="tag-row">
-                        @foreach (var label in issue.Labels)
-                        {
-                            <span class="colored-pill" style="--pill-color:@label.Color">@label.Name</span>
-                        }
+                    <div class="subpanel-card">
+                        <h2>Description</h2>
+                        <p class="body-copy">@issue.Description</p>
+                        <div class="tag-row" data-testid="issue-labels">
+                            @foreach (var label in issue.Labels)
+                            {
+                                <span class="colored-pill" style="--pill-color:@label.Color">@label.Name</span>
+                            }
                     </div>
                 </div>
 
@@ -102,9 +102,9 @@ else
                     <h2>Context</h2>
                     <dl class="meta-list">
                         <div><dt>Project</dt><dd>@issue.ProjectName</dd></div>
-                        <div><dt>Type</dt><dd>@issue.Type</dd></div>
-                        <div><dt>Priority</dt><dd>@issue.Priority</dd></div>
-                        <div><dt>Due date</dt><dd>@(issue.DueDate?.ToString("dd MMM yyyy") ?? "None")</dd></div>
+                        <div><dt>Type</dt><dd data-testid="issue-type">@issue.Type</dd></div>
+                        <div><dt>Priority</dt><dd data-testid="issue-priority">@issue.Priority</dd></div>
+                        <div><dt>Due date</dt><dd data-testid="issue-due-date">@(issue.DueDate?.ToString("dd MMM yyyy") ?? "None")</dd></div>
                         <div>
                             <dt>Reporter</dt>
                             <dd class="meta-person">
@@ -114,12 +114,12 @@ else
                         </div>
                         <div>
                             <dt>Assignee</dt>
-                            <dd class="meta-person">
+                            <dd class="meta-person" data-testid="issue-assignee">
                                 <InitialismAvatar Name="@issue.AssigneeName" />
                                 <span>@(issue.AssigneeName ?? "Unassigned")</span>
                             </dd>
                         </div>
-                        <div><dt>Status</dt><dd>@issue.StatusName</dd></div>
+                        <div><dt>Status</dt><dd data-testid="issue-status">@issue.StatusName</dd></div>
                     </dl>
                 </div>
             </div>
@@ -134,24 +134,25 @@ else
                     <h2>Comments</h2>
                 </div>
             </div>
-            <EditForm class="comment-form" Model="commentForm" OnValidSubmit="AddCommentAsync">
+            <EditForm class="comment-form" Model="commentForm" OnValidSubmit="AddCommentAsync" data-testid="comment-form">
                 <div class="comment-form-row">
                     <label class="comment-form-field">
                         <span>Comment</span>
                         <InputTextArea class="comment-input"
+                                       data-testid="comment-input"
                                        placeholder="Add a comment..."
                                        rows="1"
                                        oninput="this.style.height='auto'; this.style.height=this.scrollHeight + 'px';"
                                        @bind-Value="commentForm.Body" />
                     </label>
-                    <button class="action-button comment-submit-button" type="submit">Submit</button>
+                    <button class="action-button comment-submit-button" data-testid="comment-submit" type="submit">Submit</button>
                 </div>
             </EditForm>
 
-            <div class="timeline">
+            <div class="timeline" data-testid="comments-timeline">
                 @foreach (var comment in issue.Comments)
                 {
-                    <article class="timeline-item">
+                    <article class="timeline-item" data-testid="comment-item">
                         <div class="comment-item-header">
                             <div class="comment-item-author">
                                 <InitialismAvatar Name="@comment.AuthorName" />
@@ -172,15 +173,15 @@ else
                     <h2>Worklogs</h2>
                 </div>
                 <div class="worklog-panel-actions">
-                    <span class="selection-summary">Total @FormatDuration(worklogEntries.Sum(x => x.Minutes))</span>
-                    <button type="button" class="action-button" @onclick="OpenWorklogModal">Log time</button>
+                    <span class="selection-summary" data-testid="issue-worklog-total">Total @FormatDuration(worklogEntries.Sum(x => x.Minutes))</span>
+                    <button type="button" class="action-button" data-testid="worklog-open-modal" @onclick="OpenWorklogModal">Log time</button>
                 </div>
             </div>
 
             <div class="timeline">
                 @foreach (var entry in worklogEntries)
                 {
-                    <article class="timeline-item">
+                    <article class="timeline-item" data-testid="issue-worklog-item">
                         <div class="worklog-row">
                             <div class="worklog-meta">
                                 <InitialismAvatar Name="@entry.UserName" />
@@ -192,6 +193,7 @@ else
                             </div>
                             <button type="button"
                                     class="action-button action-button-secondary worklog-delete"
+                                    data-testid="issue-worklog-edit"
                                     @onclick="() => OpenWorklogModal(entry)">
                                 Edit
                             </button>
@@ -234,7 +236,7 @@ else
 @if (showWorklogModal)
 {
     <div class="modal-backdrop" @onclick="CloseWorklogModal">
-        <section class="modal-panel panel-card" @onclick:stopPropagation="true">
+        <section class="modal-panel panel-card" data-testid="worklog-modal" @onclick:stopPropagation="true">
             <div class="panel-header">
                 <div>
                     <p class="panel-kicker">Time</p>
@@ -246,15 +248,15 @@ else
                 <div class="form-grid">
                     <label>
                         <span>Start</span>
-                        <InputDate @bind-Value="worklogForm.StartAt" Type="InputDateType.DateTimeLocal" />
+                        <InputDate @bind-Value="worklogForm.StartAt" Type="InputDateType.DateTimeLocal" data-testid="worklog-start" />
                     </label>
                     <label>
                         <span>End</span>
-                        <InputDate @bind-Value="worklogForm.EndAt" Type="InputDateType.DateTimeLocal" />
+                        <InputDate @bind-Value="worklogForm.EndAt" Type="InputDateType.DateTimeLocal" data-testid="worklog-end" />
                     </label>
                     <label class="full-width">
                         <span>Note</span>
-                        <InputText @bind-Value="worklogForm.Note" />
+                        <InputText @bind-Value="worklogForm.Note" data-testid="worklog-note" />
                     </label>
                 </div>
 
@@ -263,15 +265,16 @@ else
                     {
                         <button type="button"
                                 class="action-button action-button-secondary"
+                                data-testid="worklog-delete"
                                 @onclick="DeleteEditingWorklogAsync"
-                                disabled="@isAddingWorklog || isDeletingWorklog">
+                                disabled="@(isAddingWorklog || isDeletingWorklog)">
                             Delete
                         </button>
                     }
-                    <button type="submit" class="action-button" disabled="@isAddingWorklog || isDeletingWorklog">
+                    <button type="submit" class="action-button" data-testid="worklog-submit" disabled="@(isAddingWorklog || isDeletingWorklog)">
                         @(editingWorklogId.HasValue ? "Save changes" : "Log time")
                     </button>
-                    <button type="button" class="action-button action-button-secondary" @onclick="CloseWorklogModal">Cancel</button>
+                    <button type="button" class="action-button action-button-secondary" data-testid="worklog-cancel" @onclick="CloseWorklogModal">Cancel</button>
                 </div>
             </EditForm>
         </section>
