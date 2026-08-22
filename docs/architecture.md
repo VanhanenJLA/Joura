@@ -70,12 +70,14 @@ Tenant isolation is enforced primarily in application code by filtering reads an
 
 The `ops` folder targets Azure App Service and Azure SQL today.
 
+GitHub Actions provides the application delivery pipeline. Pull requests and pushes to `main` run formatting, build, and Playwright checks against PostgreSQL. Successful pushes to `main` publish the web application and deploy the artifact to Azure App Service. Infrastructure deployment remains a separate, manually invoked Bicep operation.
+
 Future-ready but not fully implemented concerns include:
 
 - attachment payload storage
 - external identity integration
 - telemetry and health visibility
-- CI/CD automation
+- SQL Server schema migrations and rollback automation
 
 ## What Not To Overcomplicate Yet
 

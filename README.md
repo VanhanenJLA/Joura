@@ -121,6 +121,7 @@ That means PostgreSQL is the primary development path today.
 - `docs/data-model.md`: entities, relationships, and persistence rules
 - `docs/contributing.md`: where to place changes and what conventions matter
 - `ops/README.md`: Azure deployment notes
+- `.github/workflows/ci-cd.yml`: build, test, publish, and Azure deployment pipeline
 
 ## UI Tests
 
