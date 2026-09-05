@@ -1,5 +1,7 @@
 # Joura
 
+[![CI/CD](https://github.com/VanhanenJLA/Joura/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/VanhanenJLA/Joura/actions/workflows/ci-cd.yml)
+
 Joura is a small Jira-style issue tracking practice project built as a modular monolith with Blazor, ASP.NET Core, EF Core, and PostgreSQL by default.
 
 The project is intentionally simple:
