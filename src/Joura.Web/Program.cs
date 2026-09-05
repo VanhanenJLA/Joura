@@ -30,6 +30,7 @@ builder.Services.AddAuthorizationBuilder()
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<IWorklogReportPdfService, WorklogReportPdfService>();
 builder.Services.AddScoped<CommandPaletteService>();
+builder.Services.AddSingleton(BuildInfo.FromAssembly(typeof(Program).Assembly));
 
 var app = builder.Build();
 

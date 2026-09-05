@@ -20,4 +20,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <AssemblyMetadata Include="BuildShortSha" Value="$(BuildShortSha)" Condition="'$(BuildShortSha)' != ''" />
+    <AssemblyMetadata Include="BuildTimestampUtc" Value="$(BuildTimestampUtc)" Condition="'$(BuildTimestampUtc)' != ''" />
+  </ItemGroup>
+
 </Project>

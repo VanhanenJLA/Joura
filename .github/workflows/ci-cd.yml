@@ -78,7 +78,15 @@ jobs:
 
       - name: Publish application
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: dotnet publish src/Joura.Web/Joura.Web.csproj --configuration Release --no-restore --output publish
+        run: |
+          short_sha="${GITHUB_SHA::7}"
+          build_timestamp="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          dotnet publish src/Joura.Web/Joura.Web.csproj \
+            --configuration Release \
+            --no-restore \
+            --output publish \
+            -p:BuildShortSha="$short_sha" \
+            -p:BuildTimestampUtc="$build_timestamp"
 
       - name: Upload application artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

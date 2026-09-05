@@ -1,4 +1,6 @@
-﻿<div class="brand-shell">
+﻿@inject BuildInfo BuildInfo
+
+<div class="brand-shell">
     <div class="brand-mark">J</div>
     <div>
         <a class="navbar-brand" href="">Joura</a>
@@ -66,5 +68,13 @@
                 </div>
             </NotAuthorized>
         </AuthorizeView>
+
+        @if (BuildInfo.IsAvailable)
+        {
+            <div class="build-info" title="@BuildInfo.Tooltip" data-testid="build-info">
+                <span class="build-info-label">Build</span>
+                <span>@BuildInfo.ShortSha · @BuildInfo.DisplayTimestamp</span>
+            </div>
+        }
     </nav>
 </div>

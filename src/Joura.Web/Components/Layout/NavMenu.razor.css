@@ -64,6 +64,22 @@
     padding-top: 0.4rem;
 }
 
+.build-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 0.45rem;
+    padding: 0.85rem 1rem 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(244, 239, 229, 0.48);
+    font-size: 0.72rem;
+    line-height: 1.35;
+}
+
+.build-info-label {
+    color: rgba(244, 239, 229, 0.68);
+    font-weight: 600;
+}
+
 .nav-group {
     margin: 1.25rem 1rem 0.8rem;
     font-size: 0.72rem;
